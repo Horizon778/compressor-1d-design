@@ -43,9 +43,52 @@
   header .sub{color:var(--ink3);font-size:11.5px}
 
   /* ---------- 布局 ---------- */
-  .wrap{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;
-        padding:16px 24px 64px;align-items:start}
-  @media(max-width:1080px){.wrap{grid-template-columns:1fr}}
+  .page{padding:16px 24px 64px;max-width:1680px;margin:0 auto}
+
+  /* 输入区：顶部横排 3 列 */
+  .inputs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;
+          margin-bottom:16px;align-items:start}
+  @media(max-width:1500px){.inputs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:1000px){.inputs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:780px){.inputs{grid-template-columns:1fr}}
+  .inputs .card{margin-bottom:0;height:100%}
+
+  /* 可折叠卡片 */
+  .card.fold{padding:0}
+  .card.fold>summary{list-style:none;cursor:pointer;padding:12px 16px;
+        display:flex;justify-content:space-between;align-items:center;
+        font-size:12.5px;font-weight:600;color:#e4e4e7;user-select:none}
+  .card.fold>summary::-webkit-details-marker{display:none}
+  .card.fold>summary::after{content:"+";margin-left:auto;color:var(--ink3);
+        font-size:15px;font-weight:400;transition:transform .2s}
+  .card.fold[open]>summary::after{content:"−"}
+  .card.fold>summary:hover{background:rgba(255,255,255,.03)}
+  .card.fold .body{padding:0 16px 14px}
+
+  /* 通流截面卡片流 */
+  .stations{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+  @media(max-width:1240px){.stations{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:700px){.stations{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .st{background:rgba(255,255,255,.03);border:1px solid var(--border);
+      border-radius:9px;padding:10px 11px;transition:border-color .15s,background .15s}
+  .st:hover{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.06)}
+  .st-h{display:flex;align-items:baseline;gap:6px;margin-bottom:8px;
+        padding-bottom:7px;border-bottom:1px solid var(--border-2)}
+  .st-h b{font-family:var(--mono);font-size:12.5px;color:#93c5fd;letter-spacing:.3px}
+  .st-h span{font-size:10px;color:var(--ink3)}
+  .st-r{display:flex;align-items:baseline;justify-content:space-between;
+        font-size:11px;padding:1.5px 0}
+  .st-r span{color:var(--ink3);font-family:var(--mono);font-size:10px}
+  .st-r b{font-family:var(--mono);font-size:12px;color:#e4e4e7;font-weight:500}
+  .st-r i{font-style:normal;color:var(--ink3);font-size:9px;margin-left:3px}
+
+  /* 判据进度条 */
+  .pbar{position:relative;height:5px;border-radius:3px;
+        background:rgba(255,255,255,.07);overflow:hidden;min-width:56px}
+  .pbar>span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;
+             background:linear-gradient(90deg,#3b82f6,#22d3ee)}
+  .pbar.f>span{background:linear-gradient(90deg,#ef4444,#f87171)}
+  .pbar.w>span{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
 
   /* ---------- 卡片（玻璃） ---------- */
   .card{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);
@@ -59,23 +102,14 @@
   .card>h2 .tag{font-weight:400;color:var(--ink3);font-size:10px;letter-spacing:.3px;flex:none}
   .card .body{padding:14px 16px}
 
-  /* ---------- 侧边栏 ---------- */
-  .sidebar{position:sticky;top:74px;align-self:start;
-           max-height:calc(100vh - 92px);overflow-y:auto;padding-right:2px}
-  .sidebar::-webkit-scrollbar{width:6px}
-  .sidebar::-webkit-scrollbar-track{background:transparent}
-  .sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
-  .sidebar::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.2)}
-  @media(max-width:1080px){.sidebar{position:static;max-height:none}}
-
   /* ---------- 输入组 ---------- */
-  .grp{margin-bottom:16px}
+  .grp{margin-bottom:14px}
   .grp:last-child{margin-bottom:0}
   .grp>h3{font-size:9.5px;color:var(--ink3);margin:0 0 9px;font-weight:650;
           text-transform:uppercase;letter-spacing:.9px;
           padding-bottom:6px;border-bottom:1px solid var(--border-2)}
-  .row{display:grid;grid-template-columns:1fr 82px 38px;gap:8px;align-items:center;
-       margin-bottom:5px}
+  .row{display:grid;grid-template-columns:1fr 78px 36px;gap:7px;align-items:center;
+       margin-bottom:4px}
   .row label{font-size:11.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;
              text-overflow:ellipsis;line-height:1.9}
   .row label small{color:var(--ink3);font-size:10px;margin-left:3px;font-family:var(--mono)}
@@ -111,7 +145,7 @@
   th,td{padding:6.5px 10px;border-bottom:1px solid var(--border-2);text-align:right;
         font-variant-numeric:tabular-nums;overflow:hidden}
   th:first-child,td:first-child{text-align:left;width:30%}
-  th:nth-child(2),td:nth-child(2){width:11%}
+  th:nth-child(2),td:nth-child(2){width:13%}
   th:nth-child(3),td:nth-child(3){width:15%}
   th:nth-child(4),td:nth-child(4){width:8%}
   thead th{background:transparent;color:var(--ink3);font-weight:600;font-size:10px;
@@ -191,9 +225,12 @@
   <span class="sub">按崔晓杰(2025) 第 2 章公式实现 · 截面 0-0 → 5-5</span>
 </header>
 
-<div class="wrap">
-  <!-- ================= 输入 ================= -->
-  <div class="sidebar">
+<div class="page">
+  <!-- ================= 关键指标（置顶） ================= -->
+  <div id="kpi" class="kpi"></div>
+
+  <!-- ================= 输入（顶部横排） ================= -->
+  <section class="inputs">
     <div class="card">
       <h2>设计工况 <span class="tag">表 2-1</span></h2>
       <div class="body">
@@ -211,10 +248,9 @@
     </div>
 
     <div class="card">
-      <h2>设计选择 <span class="tag">经验系数</span></h2>
+      <h2>总体 <span class="tag">经验系数</span></h2>
       <div class="body">
         <div class="grp">
-          <h3>总体</h3>
           <div class="row"><label>压头系数 <small>Hb</small></label><input id="i_hb" value="0.455"><span class="u">-</span></div>
           <div class="row"><label>总-总效率 <small>ηtt</small></label><input id="i_eta" value="0.78"><span class="u">-</span></div>
           <div class="row"><label>吸气室速度 <small>c0</small></label><input id="i_c0" value="40"><span class="u">m/s</span></div>
@@ -225,8 +261,13 @@
             </select><span class="u">-</span></div>
           <div class="row"><label>总压恢复 <small>σ</small></label><input id="i_sig" value="0.99"><span class="u">-</span></div>
         </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>叶轮 <span class="tag">几何与叶片</span></h2>
+      <div class="body">
         <div class="grp">
-          <h3>叶轮</h3>
           <div class="row"><label>轴径比 <small>Kd</small></label><input id="i_kd" value="0.40"><span class="u">-</span></div>
           <div class="row"><label>进口半径系数 <small>k1</small></label><input id="i_k1" value="1.04"><span class="u">-</span></div>
           <div class="row"><label>叶尖半径比 <small>KD1</small></label><input id="i_kd1" value="1.10"><span class="u">-</span></div>
@@ -243,8 +284,13 @@
           <div class="row"><label>出口安装角 <small>β2A</small></label><input id="i_b2a" value="38"><span class="u">°</span></div>
           <div class="row"><label>叶顶间隙 <small>t</small></label><input id="i_tc" value="0.5"><span class="u">mm</span></div>
         </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>扩压器与蜗壳 <span class="tag">后置部件</span></h2>
+      <div class="body">
         <div class="grp">
-          <h3>扩压器与蜗壳</h3>
           <div class="row"><label>无叶段比 <small>k3</small></label><input id="i_k3" value="1.10"><span class="u">-</span></div>
           <div class="row"><label>出口角增量 <small>i</small></label><input id="i_i" value="20"><span class="u">°</span></div>
           <div class="row"><label>扩张角目标 <small>θ</small></label><input id="i_th" value="9"><span class="u">°</span></div>
@@ -253,8 +299,8 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>子午流道端点斜率 <span class="tag">式(2-80)(2-81)</span></h2>
+    <details class="card fold">
+      <summary><span>子午流道端点斜率</span><span class="tag">式(2-80)(2-81)</span></summary>
       <div class="body">
         <div class="row"><label>进口切向角 <small>θ0</small></label><input id="i_th0" value="8"><span class="u">°</span></div>
         <div class="row"><label>出口切向角 <small>θ4</small></label><input id="i_th4" value="86"><span class="u">°</span></div>
@@ -274,18 +320,17 @@
           <button class="ghost" onclick="resetIn()">恢复默认</button>
         </div>
       </div>
-    </div>
-  </div>
+    </details>
+  </section>
 
   <!-- ================= 输出 ================= -->
-  <div id="out">
+  <section id="out">
     <div class="flow">
       <a href="#s1">① 吸气室 0-0</a><a href="#s2">② 叶轮进口 1-1</a>
       <a href="#s3">③ 叶轮出口 2-2</a><a href="#s4">④ 无叶段 3-3</a>
       <a href="#s5">⑤ 叶片扩压器 4-4</a><a href="#s6">⑥ 蜗壳 5-5</a>
       <a href="#s7">⑦ 子午流道</a><a href="#s8">⑧ 校核</a>
     </div>
-    <div id="kpi" class="kpi"></div>
     <div class="card" id="s7">
       <h2>⑦ 子午流道（五点四次贝塞尔 + 内切圆）
         <span class="tag" id="merTag">式(2-76)~(2-86)</span></h2>
@@ -327,7 +372,7 @@
       <h2>⑨ CFturbo 填表清单 <span class="tag">角度已换算为「从切向测量」</span></h2>
       <div class="body" id="cftBody"></div>
     </div>
-  </div>
+  </section>
 </div>
 
 <script>
@@ -1190,7 +1235,26 @@ function render(o,p,m){
   }
   document.getElementById('kpi').innerHTML = kpiHTML;
 
-  let h='';
+  // ---- 通流截面卡片流（6 截面并排） ----
+  const stDefs = [['s0','0-0','吸气室'],['s1','1-1','叶轮进口'],['s2','2-2','叶轮出口'],
+                  ['s3','3-3','无叶段'],['s4','4-4','扩压器'],['s5','5-5','蜗壳']];
+  let stH = `<div class="card"><h2>通流截面参数
+      <span class="tag">6 截面 · 论文 2.1.3</span></h2>
+    <div class="body"><div class="stations">`;
+  for(const [k,no,nm] of stDefs){
+    const d = o.st[k];
+    stH += `<div class="st">
+      <div class="st-h"><b>${no}</b><span>${nm}</span></div>
+      <div class="st-r"><span>T</span><b>${d.T.toFixed(1)}</b><i>K</i></div>
+      <div class="st-r"><span>p</span><b>${(d.P/1000).toFixed(2)}</b><i>kPa</i></div>
+      <div class="st-r"><span>ρ</span><b>${d.rho.toFixed(3)}</b><i></i></div>
+      <div class="st-r"><span>c</span><b>${d.c.toFixed(1)}</b><i>m/s</i></div>
+      <div class="st-r"><span>M</span><b>${d.M.toFixed(3)}</b><i></i></div>
+    </div>`;
+  }
+  stH += `</div></div></div>`;
+
+  let h = stH;
   h+=tableHTML('① 吸气室截面 0-0','式(2-2)~(2-4)',[
     ['静温','T0',fmt(o.st.s0.T),'K','(2-2) T0 = Tin − c0²/(2Cp)'],
     ['静压','P0',fmt(o.st.s0.P/1000),'kPa','(2-3) P0 = Pin·(T0/Tin)^(k/(k−1))'],
@@ -1356,7 +1420,14 @@ function render(o,p,m){
     };
     const rg = (c.lo!=null&&c.hi!=null)?`${f2(c.lo)}~${f2(c.hi)}`
              :(c.lo!=null?`≥${f2(c.lo)}`:(c.hi!=null?`≤${f2(c.hi)}`:'—'));
-    ch+=`<tr><td>${c.name}</td><td class="num">${v}</td><td class="num">${rg}</td>
+    // 进度条：当前值在推荐区间 [lo,hi] 中的位置
+    let pb='';
+    if(c.val!=null && c.lo!=null && c.hi!=null && c.hi>c.lo){
+      const pct=Math.max(0,Math.min(100,(c.val-c.lo)/(c.hi-c.lo)*100));
+      const cls=c.st==='fail'?'f':(c.st==='warn'?'w':'');
+      pb=`<div class="pbar ${cls}" style="margin-top:3px"><span style="width:${pct.toFixed(0)}%"></span></div>`;
+    }
+    ch+=`<tr><td>${c.name}</td><td class="num">${v}${pb}</td><td class="num">${rg}</td>
       <td><span class="badge ${c.st}">${stTxt[c.st]}</span></td><td class="eq">${c.eq}</td></tr>`;
   }
   ch+='</tbody></table>';
