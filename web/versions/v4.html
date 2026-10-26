@@ -6,108 +6,81 @@
 <title>单级离心压缩机一维设计与子午流道</title>
 <style>
   :root{
-    --bg:#0a0b0f;
-    --panel:#101218;
-    --glass:rgba(255,255,255,.028);
-    --glass-2:rgba(255,255,255,.055);
-    --border:rgba(255,255,255,.075);
-    --border-2:rgba(255,255,255,.045);
-    --ink:#f4f4f5;
-    --ink2:#a1a1aa;
-    --ink3:#71717a;
-    --accent:#3b82f6;
-    --accent2:#22d3ee;
-    --ok:#34d399;  --ok-bg:rgba(16,185,129,.13);
-    --warn:#fbbf24; --warn-bg:rgba(245,158,11,.13);
-    --bad:#f87171;  --bad-bg:rgba(239,68,68,.13);
+    --bg:#f7f9fc;
+    --surface:#ffffff;
+    --surface-2:#fbfcfe;
+    --border:#e3e8f0;
+    --border-2:#eef2f7;
+    --ink:#0f172a;
+    --ink2:#475569;
+    --ink3:#94a3b8;
+    --accent:#2563eb;
+    --accent-2:#0891b2;
+    --accent-soft:#eff5ff;
+    --ok:#059669;  --ok-bg:#ecfdf5;  --ok-bd:#a7f3d0;
+    --warn:#d97706; --warn-bg:#fffbeb; --warn-bd:#fde68a;
+    --bad:#dc2626;  --bad-bg:#fef2f2;  --bad-bd:#fecaca;
     --r:12px;
+    --sh:0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.05);
+    --sh-lg:0 6px 20px rgba(15,23,42,.08);
     --mono:"Cascadia Mono","SF Mono",Consolas,Menlo,monospace;
   }
   *{box-sizing:border-box}
-  html{color-scheme:dark}
   body{margin:0;background:var(--bg);color:var(--ink);
        font:13.5px/1.6 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
        -webkit-font-smoothing:antialiased;
-       background-image:radial-gradient(1200px 600px at 80% -10%,rgba(59,130,246,.07),transparent 60%),
-                        radial-gradient(900px 500px at 10% 110%,rgba(34,211,238,.05),transparent 60%);
+       background-image:radial-gradient(1100px 520px at 82% -8%,rgba(37,99,235,.045),transparent 62%),
+                        radial-gradient(800px 420px at 8% 104%,rgba(8,145,178,.035),transparent 62%);
        background-attachment:fixed}
 
-  /* ---------- 顶栏 ---------- */
-  header{background:rgba(10,11,15,.72);backdrop-filter:blur(14px);
+  header{background:rgba(255,255,255,.82);backdrop-filter:blur(14px);
          border-bottom:1px solid var(--border);padding:0 24px;height:58px;
-         display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:30}
+         display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:30;
+         box-shadow:0 1px 3px rgba(15,23,42,.03)}
   header::before{content:"";width:3px;height:24px;border-radius:2px;flex:none;
-         background:linear-gradient(180deg,#60a5fa,#22d3ee);
-         box-shadow:0 0 12px rgba(59,130,246,.6)}
-  header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:-.2px;color:#fafafa}
+         background:linear-gradient(180deg,#2563eb,#0891b2);
+         box-shadow:0 0 10px rgba(37,99,235,.35)}
+  header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:-.2px}
   header .sub{color:var(--ink3);font-size:11.5px}
 
-  /* ---------- 布局 ---------- */
   .page{padding:16px 24px 64px;max-width:1680px;margin:0 auto}
 
-  /* 输入区：顶部横排 3 列 */
+  /* 输入区：顶部横排 5 列 */
   .inputs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;
           margin-bottom:16px;align-items:start}
   @media(max-width:1500px){.inputs{grid-template-columns:repeat(3,minmax(0,1fr))}}
   @media(max-width:1000px){.inputs{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:780px){.inputs{grid-template-columns:1fr}}
   .inputs .card{margin-bottom:0;height:100%}
 
-  /* 可折叠卡片 */
+  /* 卡片 */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+        margin-bottom:14px;overflow:hidden;box-shadow:var(--sh);
+        transition:box-shadow .2s,border-color .2s}
+  .card:hover{box-shadow:var(--sh-lg);border-color:#d6dee9}
+  .card>h2{font-size:12.5px;margin:0;padding:12px 16px;background:var(--surface-2);
+           border-bottom:1px solid var(--border-2);font-weight:640;letter-spacing:-.1px;
+           display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .card>h2 .tag{font-weight:400;color:var(--ink3);font-size:10px;letter-spacing:.2px;flex:none}
+  .card .body{padding:14px 16px}
+
+  /* 折叠卡片 */
   .card.fold{padding:0}
   .card.fold>summary{list-style:none;cursor:pointer;padding:12px 16px;
         display:flex;justify-content:space-between;align-items:center;
-        font-size:12.5px;font-weight:600;color:#e4e4e7;user-select:none}
+        font-size:12.5px;font-weight:640;color:var(--ink);user-select:none}
   .card.fold>summary::-webkit-details-marker{display:none}
   .card.fold>summary::after{content:"+";margin-left:auto;color:var(--ink3);
-        font-size:15px;font-weight:400;transition:transform .2s}
+        font-size:15px;font-weight:400}
   .card.fold[open]>summary::after{content:"−"}
-  .card.fold>summary:hover{background:rgba(255,255,255,.03)}
+  .card.fold>summary:hover{background:var(--surface-2)}
   .card.fold .body{padding:0 16px 14px}
 
-  /* 通流截面卡片流 */
-  .stations{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
-  @media(max-width:1240px){.stations{grid-template-columns:repeat(3,minmax(0,1fr))}}
-  @media(max-width:700px){.stations{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  .st{background:rgba(255,255,255,.03);border:1px solid var(--border);
-      border-radius:9px;padding:10px 11px;transition:border-color .15s,background .15s}
-  .st:hover{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.06)}
-  .st-h{display:flex;align-items:baseline;gap:6px;margin-bottom:8px;
-        padding-bottom:7px;border-bottom:1px solid var(--border-2)}
-  .st-h b{font-family:var(--mono);font-size:12.5px;color:#93c5fd;letter-spacing:.3px}
-  .st-h span{font-size:10px;color:var(--ink3)}
-  .st-r{display:flex;align-items:baseline;justify-content:space-between;
-        font-size:11px;padding:1.5px 0}
-  .st-r span{color:var(--ink3);font-family:var(--mono);font-size:10px}
-  .st-r b{font-family:var(--mono);font-size:12px;color:#e4e4e7;font-weight:500}
-  .st-r i{font-style:normal;color:var(--ink3);font-size:9px;margin-left:3px}
-
-  /* 判据进度条 */
-  .pbar{position:relative;height:5px;border-radius:3px;
-        background:rgba(255,255,255,.07);overflow:hidden;min-width:56px}
-  .pbar>span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;
-             background:linear-gradient(90deg,#3b82f6,#22d3ee)}
-  .pbar.f>span{background:linear-gradient(90deg,#ef4444,#f87171)}
-  .pbar.w>span{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
-
-  /* ---------- 卡片（玻璃） ---------- */
-  .card{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);
-        margin-bottom:14px;overflow:hidden;
-        transition:background .2s,border-color .2s}
-  .card:hover{background:var(--glass-2);border-color:rgba(255,255,255,.11)}
-  .card>h2{font-size:12.5px;margin:0;padding:12px 16px;background:transparent;
-           border-bottom:1px solid var(--border-2);font-weight:600;letter-spacing:-.1px;
-           display:flex;justify-content:space-between;align-items:center;gap:10px;
-           color:#e4e4e7}
-  .card>h2 .tag{font-weight:400;color:var(--ink3);font-size:10px;letter-spacing:.3px;flex:none}
-  .card .body{padding:14px 16px}
-
-  /* ---------- 输入组 ---------- */
+  /* 输入组 */
   .grp{margin-bottom:14px}
   .grp:last-child{margin-bottom:0}
   .grp>h3{font-size:9.5px;color:var(--ink3);margin:0 0 9px;font-weight:650;
           text-transform:uppercase;letter-spacing:.9px;
-          padding-bottom:6px;border-bottom:1px solid var(--border-2)}
+          padding-bottom:6px;border-bottom:1px dashed var(--border-2)}
   .row{display:grid;grid-template-columns:1fr 78px 36px;gap:7px;align-items:center;
        margin-bottom:4px}
   .row label{font-size:11.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;
@@ -115,32 +88,29 @@
   .row label small{color:var(--ink3);font-size:10px;margin-left:3px;font-family:var(--mono)}
   .row input,.row select{width:100%;padding:5px 8px;border:1px solid var(--border);
              border-radius:7px;font:12.5px var(--mono);text-align:right;
-             background:rgba(255,255,255,.035);color:#fafafa;
+             background:var(--surface-2);color:var(--ink);
              transition:border-color .15s,box-shadow .15s,background .15s}
   .row select{text-align:left;font-family:system-ui;font-size:11.5px;padding:4.5px 5px;
               cursor:pointer;grid-column:2 / 4}
-  .row input:hover,.row select:hover{border-color:rgba(255,255,255,.16);
-             background:rgba(255,255,255,.055)}
+  .row input:hover,.row select:hover{border-color:#c9d3e0;background:#fff}
   .row input:focus,.row select:focus{outline:none;border-color:var(--accent);
-             background:rgba(59,130,246,.08);
-             box-shadow:0 0 0 3px rgba(59,130,246,.16), 0 0 16px rgba(59,130,246,.14)}
+             background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
   .row .u{font-size:9.5px;color:var(--ink3);text-align:left;letter-spacing:-.2px}
 
-  /* ---------- 按钮 ---------- */
+  /* 按钮 */
   .btns{display:flex;gap:8px;margin-top:8px}
-  button{flex:1;padding:9px;border-radius:8px;border:1px solid transparent;
+  button{flex:1;padding:9px;border-radius:8px;border:1px solid var(--accent);
          background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;
          font-size:12.5px;font-weight:600;cursor:pointer;
          transition:filter .15s,transform .08s,box-shadow .2s;
-         box-shadow:0 2px 10px rgba(59,130,246,.35)}
-  button:hover{filter:brightness(1.12);box-shadow:0 4px 18px rgba(59,130,246,.5)}
+         box-shadow:0 2px 8px rgba(37,99,235,.25)}
+  button:hover{filter:brightness(1.06);box-shadow:0 4px 14px rgba(37,99,235,.32)}
   button:active{transform:translateY(1px)}
-  button.ghost{background:rgba(255,255,255,.04);color:var(--ink2);
-               border-color:var(--border);box-shadow:none}
-  button.ghost:hover{background:rgba(255,255,255,.08);color:#fafafa;
-               border-color:rgba(255,255,255,.16)}
+  button.ghost{background:#fff;color:var(--accent);border-color:var(--border);
+               box-shadow:none}
+  button.ghost:hover{background:var(--accent-soft);border-color:#bfdbfe}
 
-  /* ---------- 表格 ---------- */
+  /* 表格 */
   table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
   th,td{padding:6.5px 10px;border-bottom:1px solid var(--border-2);text-align:right;
         font-variant-numeric:tabular-nums;overflow:hidden}
@@ -148,14 +118,14 @@
   th:nth-child(2),td:nth-child(2){width:13%}
   th:nth-child(3),td:nth-child(3){width:15%}
   th:nth-child(4),td:nth-child(4){width:8%}
-  thead th{background:transparent;color:var(--ink3);font-weight:600;font-size:10px;
+  thead th{background:var(--surface-2);color:var(--ink3);font-weight:600;font-size:10px;
            letter-spacing:.5px;border-bottom:1px solid var(--border);text-transform:uppercase}
   tbody tr{transition:background .12s}
-  tbody tr:hover td{background:rgba(255,255,255,.03)}
-  td.num{font-family:var(--mono);font-size:11.5px;color:#e4e4e7}
-  tr.hl td{background:rgba(59,130,246,.10)}
+  tbody tr:hover td{background:#f8fafc}
+  td.num{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+  tr.hl td{background:var(--accent-soft)}
   tr.hl td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
-  tr.hl:hover td{background:rgba(59,130,246,.16)}
+  tr.hl:hover td{background:#e6efff}
   .eq{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-align:left;
       white-space:normal;line-height:1.45;letter-spacing:-.1px}
   table.cft th:nth-child(1),table.cft td:nth-child(1){width:15%}
@@ -164,59 +134,83 @@
   table.cft th:nth-child(4),table.cft td:nth-child(4){width:11%;text-align:left;white-space:nowrap}
   table.cft th:nth-child(5),table.cft td:nth-child(5){width:20%;text-align:left}
 
-  /* ---------- 徽章 ---------- */
+  /* 徽章 */
   .badge{display:inline-block;padding:1.5px 8px;border-radius:6px;font-size:9.5px;
-         font-weight:700;line-height:1.7;letter-spacing:.4px;
-         border:1px solid transparent}
-  .ok{background:var(--ok-bg);color:var(--ok);border-color:rgba(16,185,129,.25)}
-  .warn{background:var(--warn-bg);color:var(--warn);border-color:rgba(245,158,11,.25)}
-  .fail{background:var(--bad-bg);color:var(--bad);border-color:rgba(239,68,68,.25)}
-  .na{background:rgba(255,255,255,.05);color:var(--ink3);border-color:var(--border-2)}
+         font-weight:700;line-height:1.7;letter-spacing:.4px;border:1px solid transparent}
+  .ok{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-bd)}
+  .warn{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-bd)}
+  .fail{background:var(--bad-bg);color:var(--bad);border-color:var(--bad-bd)}
+  .na{background:#f1f5f9;color:var(--ink3);border-color:var(--border-2)}
 
-  /* ---------- 图表 ---------- */
+  /* 通流截面卡片流 */
+  .stations{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+  @media(max-width:1240px){.stations{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:700px){.stations{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .st{background:var(--surface-2);border:1px solid var(--border);
+      border-radius:9px;padding:10px 11px;transition:border-color .15s,background .15s}
+  .st:hover{border-color:#bfdbfe;background:var(--accent-soft)}
+  .st-h{display:flex;align-items:baseline;gap:6px;margin-bottom:8px;
+        padding-bottom:7px;border-bottom:1px solid var(--border-2)}
+  .st-h b{font-family:var(--mono);font-size:12.5px;color:var(--accent);letter-spacing:.3px}
+  .st-h span{font-size:10px;color:var(--ink3)}
+  .st-r{display:flex;align-items:baseline;justify-content:space-between;padding:1.5px 0}
+  .st-r span{color:var(--ink3);font-family:var(--mono);font-size:10px}
+  .st-r b{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500}
+  .st-r i{font-style:normal;color:var(--ink3);font-size:9px;margin-left:3px}
+
+  /* 判据进度条 */
+  .pbar{position:relative;height:5px;border-radius:3px;
+        background:#e8edf4;overflow:hidden;min-width:56px}
+  .pbar>span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;
+             background:linear-gradient(90deg,#3b82f6,#22d3ee)}
+  .pbar.f>span{background:linear-gradient(90deg,#ef4444,#f87171)}
+  .pbar.w>span{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+
+  /* 图表 */
   canvas{display:block;width:100%;background:transparent}
   .fig{padding:12px 14px 14px}
   .fig .cap{font-size:10.5px;color:var(--ink3);padding:7px 2px 0;line-height:1.55}
   .figs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   @media(max-width:860px){.figs{grid-template-columns:1fr}}
 
-  /* ---------- 流程导航 ---------- */
+  /* 流程导航 */
   .flow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-  .flow a{font-size:11px;padding:5px 12px;border-radius:20px;
-          background:rgba(255,255,255,.035);border:1px solid var(--border);
-          color:var(--ink2);text-decoration:none;transition:all .16s}
-  .flow a:hover{border-color:rgba(59,130,246,.55);color:#93c5fd;
-                background:rgba(59,130,246,.12);
-                box-shadow:0 0 14px rgba(59,130,246,.18)}
+  .flow a{font-size:11px;padding:5px 12px;border-radius:20px;background:#fff;
+          border:1px solid var(--border);color:var(--ink2);text-decoration:none;
+          transition:all .16s;box-shadow:var(--sh)}
+  .flow a:hover{border-color:#bfdbfe;color:var(--accent);background:var(--accent-soft);
+                transform:translateY(-1px)}
 
-  /* ---------- 提示块 ---------- */
+  /* 提示块 */
   .note{font-size:11.5px;color:var(--ink2);margin:9px 0 0;padding:10px 13px;
-        background:rgba(255,255,255,.025);border-left:2px solid rgba(59,130,246,.5);
+        background:var(--surface-2);border-left:2px solid #bfdbfe;
         border-radius:0 7px 7px 0;line-height:1.7}
-  .note b{color:#e4e4e7;font-weight:650}
+  .note b{color:var(--ink);font-weight:650}
 
-  /* ---------- KPI ---------- */
-  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  /* KPI */
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
   @media(max-width:1080px){.kpi{grid-template-columns:repeat(2,1fr)}}
-  .kpi>div{background:linear-gradient(140deg,rgba(59,130,246,.10),rgba(34,211,238,.04) 60%,rgba(255,255,255,.02));
-           border:1px solid rgba(59,130,246,.18);border-radius:var(--r);
+  .kpi>div{background:linear-gradient(140deg,#ffffff,#f4f8ff 70%,#f0f9ff);
+           border:1px solid #dbe7f7;border-radius:var(--r);
            padding:13px 16px;position:relative;overflow:hidden;
-           transition:border-color .2s,transform .15s}
-  .kpi>div:hover{border-color:rgba(59,130,246,.35);transform:translateY(-1px)}
+           transition:box-shadow .2s,transform .15s;box-shadow:var(--sh)}
+  .kpi>div:hover{box-shadow:var(--sh-lg);transform:translateY(-1px)}
   .kpi>div::before{content:"";position:absolute;inset:0;
-           background:radial-gradient(220px 90px at 100% 0%,rgba(59,130,246,.16),transparent 70%);
+           background:radial-gradient(200px 80px at 100% 0%,rgba(37,99,235,.08),transparent 70%);
            pointer-events:none}
-  .kpi .k{font-size:10.5px;color:#93a4bd;letter-spacing:.2px;position:relative}
+  .kpi>div::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+           background:linear-gradient(180deg,#3b82f6,#22d3ee)}
+  .kpi .k{font-size:10.5px;color:var(--ink2);letter-spacing:.2px;position:relative}
   .kpi .v{font:650 21px/1.25 var(--mono);margin-top:3px;letter-spacing:-.8px;
           position:relative;
-          background:linear-gradient(135deg,#93c5fd,#22d3ee);
+          background:linear-gradient(135deg,#1d4ed8,#0891b2);
           -webkit-background-clip:text;background-clip:text;
           -webkit-text-fill-color:transparent}
   .kpi .v small{font-size:10.5px;color:var(--ink3);font-weight:400;margin-left:4px;
                 letter-spacing:0;-webkit-text-fill-color:var(--ink3)}
 
-  code{font-family:var(--mono);font-size:11.5px;background:rgba(255,255,255,.06);
-       padding:1px 5px;border-radius:4px;color:#cbd5e1}
+  code{font-family:var(--mono);font-size:11.5px;background:#f1f5f9;padding:1px 5px;
+       border-radius:4px;color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -339,6 +333,11 @@
           <div class="cap">子午面：蓝=轮毂 hub，红=轮缘 shroud，灰圆=内切圆。进口面 z=0 两条线在 r 向分开；出口面 r=r₂ 两条线在 z 向分开，间距即 b₂</div></div>
         <div class="fig"><canvas id="cvArea" style="width:100%;height:400px"></canvas>
           <div class="cap">内切圆半径沿相对弧长的变化（论文图 2-24 的判据：必须单调）</div></div>
+      </div>
+      <div class="fig" style="border-top:1px solid var(--border-2);padding-top:14px">
+        <canvas id="cvTri" style="width:100%;height:340px"></canvas>
+        <div class="cap">速度三角形：左 = 进口 1-1（轴向进气，c₁ 竖直、u₁ 水平）；
+          右 = 出口 2-2（c₂ 斜向、w₂ 为相对速度）。同一比例尺，可直接比大小。</div>
       </div>
       <div class="body" id="merTable"></div>
     </div>
@@ -828,19 +827,19 @@ function drawMeridian(cv, m, o){
   const sc=Math.min((W-pad.l-pad.r)/dx, (H-pad.t-pad.b)/dy);
   const X=x=>pad.l+(x-xmin)*sc, Y=y=>H-pad.b-(y-ymin)*sc;
 
-  ctx.strokeStyle='rgba(255,255,255,.055)'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
+  ctx.strokeStyle='#eef2f7'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
   const stepZ = niceStep(dx*1000), stepR = niceStep(dy*1000);
   for(let z=Math.ceil(xmin*1000/stepZ)*stepZ; z<=xmax*1000+1e-6; z+=stepZ){
     ctx.beginPath(); ctx.moveTo(X(z/1000),pad.t); ctx.lineTo(X(z/1000),H-pad.b); ctx.stroke();
-    ctx.fillStyle='#71717a'; ctx.textAlign='center';
+    ctx.fillStyle='#94a3b8'; ctx.textAlign='center';
     ctx.fillText(z, X(z/1000), H-pad.b+14);
   }
   for(let r=Math.ceil(ymin*1000/stepR)*stepR; r<=ymax*1000+1e-6; r+=stepR){
     ctx.beginPath(); ctx.moveTo(pad.l,Y(r/1000)); ctx.lineTo(W-pad.r,Y(r/1000)); ctx.stroke();
-    ctx.fillStyle='#71717a'; ctx.textAlign='right';
+    ctx.fillStyle='#94a3b8'; ctx.textAlign='right';
     ctx.fillText(r, pad.l-5, Y(r/1000)+3.5);
   }
-  ctx.fillStyle='#a1a1aa'; ctx.textAlign='center';
+  ctx.fillStyle='#64748b'; ctx.textAlign='center';
   ctx.fillText('z [mm]', (pad.l+W-pad.r)/2, H-4);
   ctx.save(); ctx.translate(12,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('r [mm]',0,0); ctx.restore();
 
@@ -850,17 +849,17 @@ function drawMeridian(cv, m, o){
   for(let i=m.shr.length-1;i>=0;i--){ const P=m.shr[i]; ctx.lineTo(X(P[0]),Y(P[1])); }
   ctx.closePath();
   const grad = ctx.createLinearGradient(pad.l, H-pad.b, W-pad.r, pad.t);
-  grad.addColorStop(0,'rgba(96,165,250,.15)');
-  grad.addColorStop(1,'rgba(34,211,238,.06)');
+  grad.addColorStop(0,'rgba(37,99,235,.10)');
+  grad.addColorStop(1,'rgba(8,145,178,.05)');
   ctx.fillStyle = grad; ctx.fill();
 
   // 内切圆
-  ctx.strokeStyle='rgba(255,255,255,.10)'; ctx.lineWidth=1;
+  ctx.strokeStyle='#dbe4ef'; ctx.lineWidth=1;
   for(const c of m.circles){
     ctx.beginPath(); ctx.arc(X(c.center[0]),Y(c.center[1]),c.R*sc,0,7); ctx.stroke();
   }
   // 圆心连线（子午中线）
-  ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.setLineDash([3,3]); ctx.beginPath();
+  ctx.strokeStyle='#b9c6d8'; ctx.setLineDash([3,3]); ctx.beginPath();
   m.circles.forEach((c,i)=> i? ctx.lineTo(X(c.center[0]),Y(c.center[1]))
                              : ctx.moveTo(X(c.center[0]),Y(c.center[1])));
   ctx.stroke(); ctx.setLineDash([]);
@@ -870,14 +869,14 @@ function drawMeridian(cv, m, o){
     pts.forEach((P,i)=> i? ctx.lineTo(X(P[0]),Y(P[1])) : ctx.moveTo(X(P[0]),Y(P[1])));
     ctx.stroke();
   };
-  drawCurve(m.shr,'#f87171',2.6);
-  drawCurve(m.hub,'#60a5fa',2.6);
+  drawCurve(m.shr,'#dc2626',2.6);
+  drawCurve(m.hub,'#2563eb',2.6);
   // 进出口端点
-  [[m.hub[0],'#60a5fa'],[m.hub[m.hub.length-1],'#60a5fa'],
-   [m.shr[0],'#f87171'],[m.shr[m.shr.length-1],'#f87171']].forEach(([P,c])=>{
+  [[m.hub[0],'#2563eb'],[m.hub[m.hub.length-1],'#2563eb'],
+   [m.shr[0],'#dc2626'],[m.shr[m.shr.length-1],'#dc2626']].forEach(([P,c])=>{
     ctx.beginPath(); ctx.arc(X(P[0]),Y(P[1]),3.2,0,7);
     ctx.fillStyle=c; ctx.fill();
-    ctx.strokeStyle='#0a0b0f'; ctx.lineWidth=1.2; ctx.stroke();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.2; ctx.stroke();
   });
 
   // 贝塞尔控制点（论文图 2-9 的方块）
@@ -892,16 +891,16 @@ function drawMeridian(cv, m, o){
 
   // 出口 b2 标注
   const yEnd = Y(o.r2), xH = X(m.zHub), xS = X(m.zShr);
-  ctx.strokeStyle='#34d399'; ctx.lineWidth=1.5; ctx.beginPath();
+  ctx.strokeStyle='#059669'; ctx.lineWidth=1.5; ctx.beginPath();
   ctx.moveTo(xS,yEnd); ctx.lineTo(xH,yEnd); ctx.stroke();
-  ctx.fillStyle='#34d399'; ctx.font='11px system-ui'; ctx.textAlign='center';
+  ctx.fillStyle='#059669'; ctx.font='11px system-ui'; ctx.textAlign='center';
   ctx.fillText('b2 = '+(o.b2*1000).toFixed(2)+' mm', (xH+xS)/2, yEnd-6);
 
   // 图例
   ctx.font='10.5px system-ui'; ctx.textAlign='left';
   const leg=[['#2563eb','Hub 轮毂'],['#dc2626','Shroud 轮缘'],['#ccd5e3','内切圆']];
   leg.forEach(([c,t],i)=>{ ctx.fillStyle=c; ctx.fillRect(pad.l+4, pad.t+3+i*15, 10, 3);
-    ctx.fillStyle='#a1a1aa'; ctx.fillText(t, pad.l+19, pad.t+7+i*15); });
+    ctx.fillStyle='#64748b'; ctx.fillText(t, pad.l+19, pad.t+7+i*15); });
 
   // 尺寸块（右上角）：让"改参数到底改了什么"一眼可见
   const lines=[
@@ -912,10 +911,10 @@ function drawMeridian(cv, m, o){
   ];
   ctx.font='10.5px "Cascadia Mono",Consolas,monospace';
   const bw=118, bh=lines.length*14+10, bx=W-pad.r-bw, by=H-pad.b-bh-6;
-  ctx.fillStyle='rgba(18,20,27,.92)'; ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.lineWidth=1;
+  ctx.fillStyle='rgba(255,255,255,.94)'; ctx.strokeStyle='#dde5ef'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx,by,bw,bh,5) : ctx.rect(bx,by,bw,bh);
   ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#d4d4d8'; ctx.textAlign='left';
+  ctx.fillStyle='#3d4757'; ctx.textAlign='left';
   lines.forEach((t,i)=> ctx.fillText(t, bx+8, by+16+i*14));
 }
 
@@ -927,6 +926,95 @@ function niceStep(v, target){
   return (f<1.5?1:f<3.5?2:f<7.5?5:10)*e;
 }
 
+function drawVelTri(cv, o){
+  const {ctx, W, H} = setupCanvas(cv);
+  const pad = {l:44, r:20, t:42, b:38};
+
+  // 进口 1-1：轴向进气，c_u1 = 0
+  const u1  = o.u2 * o.r1 / o.r2;
+  const cm1 = o.c_m1, cu1 = 0;
+  const w1  = Math.hypot(cm1, u1);
+
+  // 出口 2-2
+  const cu2 = o.c2u, cr2 = o.c2r, u2 = o.u2;
+  const w2  = Math.hypot(cr2, u2 - cu2);
+
+  // 比例尺：水平方向放得下两个 u，垂直方向放得下最大的子午分量
+  // （垂直分量只有 c1 的 c_m1 和 c2 的 c_r2，w 的垂直分量与它们相同）
+  const gap = 56;
+  const sc = Math.min(
+    (W - pad.l - pad.r - gap) / (u1 + u2),
+    (H - pad.t - pad.b - 34) / Math.max(cm1, cr2)
+  );
+
+  const baseY = H - pad.b;
+  // 两个三角形整体居中，避免右侧大片留白
+  const totalW = (u1 + u2) * sc + gap;
+  const x0 = Math.max(pad.l, (W - totalW) / 2);
+  const O1 = [x0, baseY];
+  const O2 = [x0 + u1 * sc + gap, baseY];
+
+  const arrow = (x0,y0,x1,y1,color,lw) => {
+    ctx.strokeStyle = color; ctx.lineWidth = lw || 2; ctx.beginPath();
+    ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    const a = Math.atan2(y1-y0, x1-x0), hl = 7;
+    ctx.beginPath(); ctx.moveTo(x1,y1);
+    ctx.lineTo(x1 - hl*Math.cos(a-0.4), y1 - hl*Math.sin(a-0.4));
+    ctx.lineTo(x1 - hl*Math.cos(a+0.4), y1 - hl*Math.sin(a+0.4));
+    ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+  };
+  const label = (x,y,txt,color,align) => {
+    ctx.fillStyle = color; ctx.font = '11px ' + getComputedStyle(document.body).fontFamily;
+    ctx.textAlign = align || 'left'; ctx.fillText(txt, x, y);
+  };
+
+  // ---- 进口 ----
+  const C1 = [O1[0] + cu1*sc, O1[1] - cm1*sc];
+  const U1 = [O1[0] + u1*sc,  O1[1]];
+  // w1 = c1 - u1，从 U1 指向 C1
+  arrow(U1[0],U1[1], C1[0],C1[1], '#dc2626', 2.2);       // w
+  arrow(O1[0],O1[1], C1[0],C1[1], '#2563eb', 2.4);       // c
+  arrow(O1[0],O1[1], U1[0],U1[1], '#64748b', 2.2);       // u
+  // 直角标记
+  ctx.strokeStyle='#cbd5e1'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(O1[0], O1[1]-cm1*sc); ctx.lineTo(U1[0], O1[1]-cm1*sc);
+  ctx.lineTo(U1[0], O1[1]); ctx.stroke(); ctx.setLineDash([]);
+  // 标注
+  label(C1[0]+8, C1[1]+16, 'c₁='+cm1.toFixed(0), '#2563eb', 'left');
+  label((O1[0]+U1[0])/2, O1[1]+15, 'u₁='+u1.toFixed(0), '#64748b', 'center');
+  label((U1[0]+C1[0])/2+8, (U1[1]+C1[1])/2, 'w₁='+w1.toFixed(0), '#dc2626');
+  label(O1[0], pad.t+2, '进口 1-1', '#0f172a', 'left');
+  label(O1[0], pad.t+18, 'β₁='+o.beta1.toFixed(1)+'°  Mw1='+o.Mw1.toFixed(3), '#94a3b8', 'left');
+
+  // ---- 出口 ----
+  const C2 = [O2[0] + cu2*sc, O2[1] - cr2*sc];
+  const U2 = [O2[0] + u2*sc,  O2[1]];
+  arrow(U2[0],U2[1], C2[0],C2[1], '#dc2626', 2.2);       // w2
+  arrow(O2[0],O2[1], C2[0],C2[1], '#2563eb', 2.4);       // c2
+  arrow(O2[0],O2[1], U2[0],U2[1], '#64748b', 2.2);       // u2
+  // 分解虚线
+  ctx.strokeStyle='#cbd5e1'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(C2[0], C2[1]); ctx.lineTo(C2[0], O2[1]);
+  ctx.moveTo(C2[0], C2[1]); ctx.lineTo(O2[0], C2[1]); ctx.stroke(); ctx.setLineDash([]);
+  label(C2[0]+6, C2[1]-4, 'c₂='+o.c2.toFixed(0), '#2563eb');
+  label((O2[0]+U2[0])/2, O2[1]+15, 'u₂='+u2.toFixed(0), '#64748b', 'center');
+  label((U2[0]+C2[0])/2+8, (U2[1]+C2[1])/2, 'w₂='+w2.toFixed(0), '#dc2626');
+  label(O2[0], pad.t+2, '出口 2-2', '#0f172a', 'left');
+  label(O2[0], pad.t+18, 'β₂='+o.beta2rel.toFixed(1)+'°  α₂='+o.alpha2.toFixed(1)+'°', '#94a3b8', 'left');
+
+  // 分量标注
+  label(C2[0]+4, O2[1]-4, 'c_r2='+cr2.toFixed(0), '#94a3b8');
+  label(O2[0]+4, C2[1]+12, 'c_u2='+cu2.toFixed(0), '#94a3b8');
+
+  // 图例
+  ctx.font='10.5px system-ui'; ctx.textAlign='left';
+  const leg=[['#2563eb','c 绝对速度'],['#64748b','u 圆周速度'],['#dc2626','w 相对速度']];
+  leg.forEach(([c,t],i)=>{
+    ctx.fillStyle=c; ctx.fillRect(W-pad.r-96, pad.t-6+i*15, 10, 3);
+    ctx.fillStyle='#64748b'; ctx.fillText(t, W-pad.r-82, pad.t-2+i*15);
+  });
+}
+
 function drawArea(cv, m){
   const {ctx, W, H} = setupCanvas(cv);
   const pad={l:50,r:14,t:14,b:32};
@@ -935,33 +1023,33 @@ function drawArea(cv, m){
   const rmax=Math.max(...R)*1.05;
   const X=s=>pad.l+s*(W-pad.l-pad.r), Y=r=>H-pad.b-r/rmax*(H-pad.t-pad.b);
 
-  ctx.strokeStyle='rgba(255,255,255,.055)'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
+  ctx.strokeStyle='#eef2f7'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
   for(let i=0;i<=4;i++){
     const r=rmax*i/4;
     ctx.beginPath(); ctx.moveTo(pad.l,Y(r)); ctx.lineTo(W-pad.r,Y(r)); ctx.stroke();
-    ctx.fillStyle='#71717a'; ctx.textAlign='right';
+    ctx.fillStyle='#94a3b8'; ctx.textAlign='right';
     ctx.fillText(r.toFixed(1), pad.l-5, Y(r)+3.5);
   }
   for(let i=0;i<=4;i++){
     const s=i/4;
     ctx.beginPath(); ctx.moveTo(X(s),pad.t); ctx.lineTo(X(s),H-pad.b); ctx.stroke();
-    ctx.fillStyle='#71717a'; ctx.textAlign='center';
+    ctx.fillStyle='#94a3b8'; ctx.textAlign='center';
     ctx.fillText(s.toFixed(1), X(s), H-pad.b+14);
   }
-  ctx.fillStyle='#a1a1aa'; ctx.textAlign='center';
+  ctx.fillStyle='#64748b'; ctx.textAlign='center';
   ctx.fillText('相对弧长 s / s_total', (pad.l+W-pad.r)/2, H-4);
 
-  ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2.2; ctx.beginPath();
+  ctx.strokeStyle='#2563eb'; ctx.lineWidth=2.2; ctx.beginPath();
   R.forEach((r,i)=> i? ctx.lineTo(X(S[i]),Y(r)) : ctx.moveTo(X(S[i]),Y(r)));
   ctx.stroke();
-  ctx.fillStyle='#60a5fa';
+  ctx.fillStyle='#2563eb';
   R.forEach((r,i)=>{ ctx.beginPath(); ctx.arc(X(S[i]),Y(r),2.4,0,7); ctx.fill(); });
 
   let inc=0, dec=0;
   for(let i=1;i<R.length;i++){ if(R[i]>R[i-1]+1e-9) inc++; else if(R[i]<R[i-1]-1e-9) dec++; }
   const mono = (inc===0 || dec===0);
   ctx.font='11.5px system-ui'; ctx.textAlign='left';
-  ctx.fillStyle= mono ? '#34d399' : '#f87171';
+  ctx.fillStyle= mono ? '#059669' : '#dc2626';
   ctx.fillText(mono ? 'OK  半径单调 -> 型线无曲率突变（合格）'
                     : 'FAIL  半径非单调 -> 型线存在突变', pad.l+6, pad.t+13);
 }
@@ -1049,31 +1137,31 @@ function drawSweep(cv, data, meta, cur){
   const YP=p=>H-pad.b-(p-(pMin-pPad))/((pMax+pPad)-(pMin-pPad))*(H-pad.t-pad.b);
 
   // 网格
-  ctx.strokeStyle='rgba(255,255,255,.055)'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
+  ctx.strokeStyle='#eef2f7'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
   for(let i=0;i<=4;i++){
     const y=pad.t+(H-pad.t-pad.b)*i/4;
     ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
   }
   // 轴标签
-  ctx.fillStyle='#34d399'; ctx.textAlign='right';
+  ctx.fillStyle='#059669'; ctx.textAlign='right';
   for(let i=0;i<=4;i++){
     const e=(eMax+ePad)-(i/4)*((eMax+ePad)-(eMin-ePad));
     ctx.fillText(e.toFixed(2), pad.l-5, pad.t+(H-pad.t-pad.b)*i/4+4);
   }
-  ctx.fillStyle='#f87171'; ctx.textAlign='left';
+  ctx.fillStyle='#dc2626'; ctx.textAlign='left';
   for(let i=0;i<=4;i++){
     const pv=(pMax+pPad)-(i/4)*((pMax+pPad)-(pMin-pPad));
     ctx.fillText(pv.toFixed(2), W-pad.r+5, pad.t+(H-pad.t-pad.b)*i/4+4);
   }
-  ctx.fillStyle='#71717a'; ctx.textAlign='center'; ctx.font='10px system-ui';
+  ctx.fillStyle='#94a3b8'; ctx.textAlign='center'; ctx.font='10px system-ui';
   for(let i=0;i<=4;i++){
     const v=x0+(x1-x0)*i/4;
     ctx.fillText(meta.fmt(v), X(v), H-pad.b+13);
   }
   ctx.font='10.5px system-ui';
   ctx.fillText(meta.label+' ['+meta.unit+']', (pad.l+W-pad.r)/2, H-4);
-  ctx.fillStyle='#34d399'; ctx.textAlign='left'; ctx.fillText('ηp [%]', pad.l+2, pad.t+10);
-  ctx.fillStyle='#f87171'; ctx.textAlign='right'; ctx.fillText('πt', W-pad.r-2, pad.t+10);
+  ctx.fillStyle='#059669'; ctx.textAlign='left'; ctx.fillText('ηp [%]', pad.l+2, pad.t+10);
+  ctx.fillStyle='#dc2626'; ctx.textAlign='right'; ctx.fillText('πt', W-pad.r-2, pad.t+10);
 
   // 曲线
   const line=(getY,color)=>{
@@ -1083,15 +1171,15 @@ function drawSweep(cv, data, meta, cur){
     ctx.fillStyle=color;
     data.forEach(d=>{ ctx.beginPath(); ctx.arc(X(d.v), getY(d), 2.4, 0, 7); ctx.fill(); });
   };
-  line(d=>YE(d.etaP), '#34d399');
-  line(d=>YP(d.piP), '#f87171');
+  line(d=>YE(d.etaP), '#059669');
+  line(d=>YP(d.piP), '#dc2626');
 
   // 当前值竖线
   const xc=X(cur);
-  ctx.strokeStyle='#60a5fa'; ctx.setLineDash([4,3]); ctx.lineWidth=1.5;
+  ctx.strokeStyle='#2563eb'; ctx.setLineDash([4,3]); ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.moveTo(xc,pad.t); ctx.lineTo(xc,H-pad.b); ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle='#60a5fa'; ctx.textAlign='center'; ctx.font='10.5px system-ui';
+  ctx.fillStyle='#2563eb'; ctx.textAlign='center'; ctx.font='10.5px system-ui';
   ctx.fillText('当前 '+meta.fmt(cur), xc, pad.t+9);
 }
 
@@ -1485,6 +1573,7 @@ function run(){
     requestAnimationFrame(()=>{
       drawMeridian(document.getElementById('cvMer'), m, o);
       drawArea(document.getElementById('cvArea'), m);
+      if(document.getElementById('cvTri')) drawVelTri(document.getElementById('cvTri'), o);
       if(!window._swInit && document.getElementById('cvSweep')){
         window._swInit = true;
         try{ doSweep(); }catch(e){ /* 扫描失败不影响主流程 */ }
@@ -1512,7 +1601,8 @@ function resetIn(){ for(const k in DEF) document.getElementById(k).value=DEF[k];
 
 window.addEventListener('resize', ()=>{ if(MER) requestAnimationFrame(()=>{
   drawMeridian(document.getElementById('cvMer'), MER, OUT.o);
-  drawArea(document.getElementById('cvArea'), MER); }); });
+  drawArea(document.getElementById('cvArea'), MER);
+  if(document.getElementById('cvTri')) drawVelTri(document.getElementById('cvTri'), OUT.o); }); });
 
 run();
 </script>
