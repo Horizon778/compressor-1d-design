@@ -136,6 +136,11 @@
           <div class="row"><label>压头系数 <small>Hb</small></label><input id="i_hb" value="0.455"><span class="u">-</span></div>
           <div class="row"><label>总-总效率 <small>ηtt</small></label><input id="i_eta" value="0.78"><span class="u">-</span></div>
           <div class="row"><label>吸气室速度 <small>c0</small></label><input id="i_c0" value="40"><span class="u">m/s</span></div>
+          <div class="row"><label>r1 优化目标</label>
+            <select id="i_optmode">
+              <option value="w1">w1 最小（论文）</option>
+              <option value="eta">ηp 最大（推荐）</option>
+            </select><span class="u">-</span></div>
           <div class="row"><label>总压恢复 <small>σ</small></label><input id="i_sig" value="0.99"><span class="u">-</span></div>
         </div>
         <div class="grp">
@@ -212,6 +217,30 @@
     </div>
     <div id="tables"></div>
     <div id="s8"></div>
+    <div class="card" id="sweep">
+      <h2>⑩ 单因素敏感性 <span class="tag">对应笔记「三参数合并报告无法归因」</span></h2>
+      <div class="body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select id="i_swparam" style="padding:4px 6px;border:1px solid #d5dce6;border-radius:5px;font:12px system-ui">
+            <option value="tc">t 叶顶间隙（对 ηp 敏感）</option>
+            <option value="b2a">β2A 出口安装角（对 ηp 敏感）</option>
+            <option value="kd1">KD1 叶尖半径比（对 β1/Mw1 敏感）</option>
+            <option value="rt1">rt1 叶尖半径（对 β1/Mw1 敏感）</option>
+            <option value="k3">k3 无叶段长度比（仅改几何）</option>
+            <option value="kwid">kwid 出口宽度比（仅改几何）</option>
+          </select>
+          <span style="font-size:12px;color:#5b6678">范围</span>
+          <input id="i_swlo" style="width:74px;padding:4px;border:1px solid #d5dce6;border-radius:5px;font:12px monospace;text-align:right">
+          <span style="font-size:12px;color:#5b6678">~</span>
+          <input id="i_swhi" style="width:74px;padding:4px;border:1px solid #d5dce6;border-radius:5px;font:12px monospace;text-align:right">
+          <span style="font-size:12px;color:#5b6678">点</span>
+          <input id="i_swn" value="12" style="width:52px;padding:4px;border:1px solid #d5dce6;border-radius:5px;font:12px monospace;text-align:right">
+          <button onclick="doSweep()" style="flex:none;padding:5px 14px;font-size:12px">扫描</button>
+        </div>
+        <canvas id="cvSweep" style="width:100%;height:300px"></canvas>
+        <div id="swTable"></div>
+      </div>
+    </div>
     <div class="card" id="cft">
       <h2>⑨ CFturbo 填表清单 <span class="tag">角度已换算为「从切向测量」</span></h2>
       <div class="body" id="cftBody"></div>
@@ -801,6 +830,7 @@ function readInputs(){
     m:num('i_m'), n:num('i_n'), PR:num('i_pr'), Tin:num('i_tin'), Pin:num('i_pin')*1000,
     R:num('i_R'), cp:num('i_cp'),
     hb:num('i_hb'), eta:num('i_eta'), c0:num('i_c0'), sig:num('i_sig'),
+    optmode:document.getElementById('i_optmode').value,
     kd:num('i_kd'), k1:num('i_k1'), kd1:num('i_kd1'), rt1_in:num('i_rt1'), kwid:num('i_kwid'),
     phi2:num('i_phi2'), b2mode:document.getElementById('i_b2mode').value,
     z:num('i_z'), zs:num('i_zs'), b2a:num('i_b2a'), tc:num('i_tc'),
@@ -822,6 +852,122 @@ function tableHTML(title, tag, rows, eqCol=true){
         ${eqCol?`<td class="eq">${r[4]||''}</td>`:''}</tr>`;
   }
   return h+'</tbody></table></div></div>';
+}
+
+const SW_META = {
+  b2a:  {label:'β2A 出口安装角', unit:'°',   get:(p)=>p.b2a,  set:(p,v)=>{p.b2a=v;},  fmt:(v)=>v.toFixed(1)},
+  k3:   {label:'k3 无叶段长度比', unit:'-',   get:(p)=>p.k3,   set:(p,v)=>{p.k3=v;},   fmt:(v)=>v.toFixed(3)},
+  kwid: {label:'kwid 出口宽度比', unit:'-',   get:(p)=>p.kwid, set:(p,v)=>{p.kwid=v;}, fmt:(v)=>v.toFixed(4)},
+  tc:   {label:'t 叶顶间隙',      unit:'mm',  get:(p)=>p.tc,   set:(p,v)=>{p.tc=v;},   fmt:(v)=>v.toFixed(2)},
+  kd1:  {label:'KD1 叶尖半径比',  unit:'-',   get:(p)=>p.kd1,  set:(p,v)=>{p.kd1=v;},  fmt:(v)=>v.toFixed(3)},
+  rt1:  {label:'rt1 叶尖半径',    unit:'mm',  get:(p)=>p.rt1*1000, set:(p,v)=>{p.rt1_in=v;}, fmt:(v)=>v.toFixed(1)},
+};
+
+function doSweep(){
+  const p = readInputs();
+  const key = document.getElementById('i_swparam').value;
+  const meta = SW_META[key];
+  const cur = meta.get(p);
+  let lo = parseFloat(document.getElementById('i_swlo').value);
+  let hi = parseFloat(document.getElementById('i_swhi').value);
+  if(!isFinite(lo) || !isFinite(hi)){
+    lo = cur*0.75; hi = cur*1.25;
+    document.getElementById('i_swlo').value = +lo.toFixed(3);
+    document.getElementById('i_swhi').value = +hi.toFixed(3);
+  }
+  const n = Math.max(4, Math.min(40, parseInt(document.getElementById('i_swn').value)||12));
+
+  const data = [];
+  for(let i=0;i<=n;i++){
+    const v = lo + (hi-lo)*i/n;
+    const q = {...p, optmode:'w1'};      // 扫参时固定 w1 最小，避免嵌套优化
+    meta.set(q, v);
+    if(key==='rt1') q.rt1_in = v;
+    const o = compute(q);
+    data.push({v, piP:o.piP, eta:o.etaReal*100, etaP:o.eta_p_calc*100,
+               Mw1:o.Mw1, b2:o.b2*1000, beta1:o.beta1});
+  }
+  window._SW = {data, meta, cur};
+  drawSweep(document.getElementById('cvSweep'), data, meta, cur);
+  renderSweepTable(data, meta, cur);
+}
+
+function drawSweep(cv, data, meta, cur){
+  const {ctx, W, H} = setupCanvas(cv);
+  const pad={l:52,r:56,t:14,b:34};
+  const xs=data.map(d=>d.v);
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  const eMin=Math.min(...data.map(d=>d.etaP)), eMax=Math.max(...data.map(d=>d.etaP));
+  const pMin=Math.min(...data.map(d=>d.piP)), pMax=Math.max(...data.map(d=>d.piP));
+  const ePad=Math.max((eMax-eMin)*0.25, 0.3), pPad=Math.max((pMax-pMin)*0.25, 0.01);
+  const X=v=>pad.l+(v-x0)/Math.max(x1-x0,1e-9)*(W-pad.l-pad.r);
+  const YE=e=>H-pad.b-(e-(eMin-ePad))/((eMax+ePad)-(eMin-ePad))*(H-pad.t-pad.b);
+  const YP=p=>H-pad.b-(p-(pMin-pPad))/((pMax+pPad)-(pMin-pPad))*(H-pad.t-pad.b);
+
+  // 网格
+  ctx.strokeStyle='#eef1f5'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(H-pad.t-pad.b)*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+  }
+  // 轴标签
+  ctx.fillStyle='#0f8a4a'; ctx.textAlign='right';
+  for(let i=0;i<=4;i++){
+    const e=(eMax+ePad)-(i/4)*((eMax+ePad)-(eMin-ePad));
+    ctx.fillText(e.toFixed(2), pad.l-5, pad.t+(H-pad.t-pad.b)*i/4+4);
+  }
+  ctx.fillStyle='#dc2626'; ctx.textAlign='left';
+  for(let i=0;i<=4;i++){
+    const pv=(pMax+pPad)-(i/4)*((pMax+pPad)-(pMin-pPad));
+    ctx.fillText(pv.toFixed(2), W-pad.r+5, pad.t+(H-pad.t-pad.b)*i/4+4);
+  }
+  ctx.fillStyle='#8892a4'; ctx.textAlign='center';
+  ctx.fillText(meta.label+' ['+meta.unit+']', (pad.l+W-pad.r)/2, H-5);
+  ctx.fillStyle='#0f8a4a'; ctx.textAlign='left'; ctx.fillText('ηp [%]', pad.l+2, pad.t+10);
+  ctx.fillStyle='#dc2626'; ctx.textAlign='right'; ctx.fillText('πt', W-pad.r-2, pad.t+10);
+
+  // 曲线
+  const line=(getY,color)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+    data.forEach((d,i)=> i? ctx.lineTo(X(d.v), getY(d)) : ctx.moveTo(X(d.v), getY(d)));
+    ctx.stroke();
+    ctx.fillStyle=color;
+    data.forEach(d=>{ ctx.beginPath(); ctx.arc(X(d.v), getY(d), 2.4, 0, 7); ctx.fill(); });
+  };
+  line(d=>YE(d.etaP), '#0f8a4a');
+  line(d=>YP(d.piP), '#dc2626');
+
+  // 当前值竖线
+  const xc=X(cur);
+  ctx.strokeStyle='#1a56db'; ctx.setLineDash([4,3]); ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(xc,pad.t); ctx.lineTo(xc,H-pad.b); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#1a56db'; ctx.textAlign='center'; ctx.font='10.5px system-ui';
+  ctx.fillText('当前 '+meta.fmt(cur), xc, pad.t+9);
+}
+
+function renderSweepTable(data, meta, cur){
+  let h = `<table style="margin-top:8px"><thead><tr>
+    <th>${meta.label}</th><th>πt</th><th>η [%]</th><th>ηp [%]</th><th>Mw1</th><th>β1 [°]</th></tr></thead><tbody>`;
+  let bestI=0;
+  data.forEach((d,i)=>{ if(d.etaP>data[bestI].etaP) bestI=i; });
+  data.forEach((d,i)=>{
+    const mark = i===bestI ? ' class="hl"' : '';
+    h += `<tr${mark}><td class="num">${meta.fmt(d.v)}</td><td class="num">${d.piP.toFixed(3)}</td>
+      <td class="num">${d.eta.toFixed(2)}</td><td class="num">${d.etaP.toFixed(2)}</td>
+      <td class="num">${d.Mw1.toFixed(3)}</td><td class="num">${d.beta1.toFixed(1)}</td></tr>`;
+  });
+  h += '</tbody></table>';
+  const b=data[bestI];
+  const dEta = Math.max(...data.map(d=>d.etaP)) - Math.min(...data.map(d=>d.etaP));
+  const dPi  = Math.max(...data.map(d=>d.piP)) - Math.min(...data.map(d=>d.piP));
+  h += `<div class="note">峰值在 <b>${meta.label} = ${meta.fmt(b.v)}</b>（ηp=${b.etaP.toFixed(2)}%，πt=${b.piP.toFixed(3)}）。
+      本区间内 ηp 变化 ${dEta.toFixed(2)} 点、πt 变化 ${dPi.toFixed(4)}。
+      <br><b>⚠ 响应性说明：</b>本工具是<b>反问题</b>（给定 πt 算几何），压升链从 P0₂ = Pin·πt 起步，
+      所以 <b>πt 对几何参数几乎不响应</b>——改 k3/kwid 只改变损失细节，传不到总压比上。
+      对 <b>ηp</b> 有效的只有进损失模型的那几项（间隙 t、β2A 通过滑移、rt1 通过叶片长度）。
+      要让 πt 真正响应几何，需要「正问题」模式（给定几何算性能），那是下一步。</div>`;
+  document.getElementById('swTable').innerHTML=h;
 }
 
 function cfturboTable(o,p,m){
@@ -926,11 +1072,19 @@ function cfturboTable(o,p,m){
 
 function render(o,p,m){
   // KPI
-  document.getElementById('kpi').innerHTML = `
+  let kpiHTML = `
     <div><div class="k">总压比（回算）</div><div class="v">${fmt(o.piP,4)}<small>目标 ${fmt(p.PR,4)}</small></div></div>
     <div><div class="k">等熵效率</div><div class="v">${fmt(o.etaReal*100,4)}<small>%</small></div></div>
     <div><div class="k">叶轮圆周速度 u2</div><div class="v">${fmt(o.u2,4)}<small>m/s</small></div></div>
     <div><div class="k">轴功率</div><div class="v">${fmt(o.power,4)}<small>kW</small></div></div>`;
+  if(o._opt){
+    kpiHTML += `<div><div class="k">r1 优化（ηp 最大）</div>
+      <div class="v">${o._opt.bestRt.toFixed(1)}<small>mm</small></div>
+      <div style="font-size:10.5px;color:#5b6678;margin-top:2px">
+        w1 最小解 ${o._opt.rt0.toFixed(1)} mm，ηp 提升 ${o._opt.gain>=0?'+':''}${o._opt.gain.toFixed(2)} 点
+        <br>β1=${o._opt.beta1.toFixed(1)}°，Mw1=${o._opt.Mw1.toFixed(3)}</div></div>`;
+  }
+  document.getElementById('kpi').innerHTML = kpiHTML;
 
   let h='';
   h+=tableHTML('① 吸气室截面 0-0','式(2-2)~(2-4)',[
@@ -1110,7 +1264,37 @@ let MER=null, OUT=null;
 function run(){
   try{
     const p=readInputs();
-    const o=compute(p);
+    let o, optInfo=null;
+    // ---- r1 优化 ----
+    // 论文用 w1 最小，但那只是"入口相对速度最小"，不等于级效率最高
+    // （笔记第 3.3 节与第 7 节第 1 条的批评）。有了损失模型后，
+    // 可以直接扫 rt1 取 ηp 最大——这是把代理目标换成真实目标的低成本实现。
+    if(p.optmode==='eta' && !(p.rt1_in>0)){
+      const base = compute({...p, optmode:'w1'});
+      const rt0  = base.rt1*1000;
+      let best=null, bestRt=rt0, nRej=0;
+      const N=32, lo=0.72, hi=1.28;                 // 扫 ±28%
+      for(let i=0;i<=N;i++){
+        const rt = rt0*(lo + (hi-lo)*i/N);
+        const cand = compute({...p, rt1_in: rt, optmode:'w1'});
+        // 三个硬约束，缺一个优化就会跑到边界上：
+        //   ① 数值必须有效（rt1 过小会让 c_m1 爆掉、迭代发散）
+        //   ② 叶尖相对马赫 <= 0.90（亚音速设计上限）
+        //   ③ 叶尖进口角 >= 24°（叶片太"躺"加工和结构都不合理，
+        //      CFturbo 自己的解就落在 24.3° 附近）
+        if(!isFinite(cand.eta_p_calc) || !isFinite(cand.beta1)){ nRej++; continue; }
+        if(cand.Mw1 > 0.90 || cand.beta1 < 24 || cand.beta1 > 50){ nRej++; continue; }
+        if(!best || cand.eta_p_calc > best.eta_p_calc){ best=cand; bestRt=rt; }
+      }
+      if(!best){ best = base; bestRt = rt0; }        // 全被拒就退回 w1 解
+      o = best;
+      optInfo = {rt0, bestRt, gain:(best.eta_p_calc-base.eta_p_calc)*100,
+                 etaW1:base.eta_p_calc*100, etaOpt:best.eta_p_calc*100,
+                 beta1:best.beta1, Mw1:best.Mw1, nRej};
+    }else{
+      o = compute(p);
+    }
+    o._opt = optInfo;
     const m=buildMeridian(o,p);
     MER=m; OUT={o,p};
     render(o,p,m);
@@ -1131,11 +1315,12 @@ document.querySelectorAll('.row input').forEach(el=>{
 });
 
 const DEF={i_m:0.3592,i_n:40000,i_pr:2.252,i_tin:300,i_pin:40,i_R:287.1,i_cp:1004.5,
-  i_hb:0.455,i_eta:0.78,i_c0:40,i_sig:0.99,i_kd:0.40,i_k1:1.04,i_kd1:1.10,i_rt1:0,
+  i_hb:0.455,i_eta:0.78,i_c0:40,i_sig:0.99,i_optmode:'w1',i_kd:0.40,i_k1:1.04,i_kd1:1.10,i_rt1:0,
   i_kwid:0.076,i_phi2:0.2555,i_z:9,i_zs:9,i_b2a:38,i_tc:0.5,i_k3:1.10,i_i:20,i_th:9,i_m5:0.10,
   i_th0:8,i_th4:86,i_lam:0.18,i_lz:44.6};
 function resetIn(){ for(const k in DEF) document.getElementById(k).value=DEF[k];
-  document.getElementById('i_b2mode').value='kwid'; run(); }
+  document.getElementById('i_b2mode').value='kwid';
+  document.getElementById('i_optmode').value='w1'; run(); }
 
 window.addEventListener('resize', ()=>{ if(MER) requestAnimationFrame(()=>{
   drawMeridian(document.getElementById('cvMer'), MER, OUT.o);
