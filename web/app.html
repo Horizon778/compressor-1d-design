@@ -173,13 +173,20 @@
   .figs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   @media(max-width:860px){.figs{grid-template-columns:1fr}}
 
-  /* 流程导航 */
-  .flow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-  .flow a{font-size:11px;padding:5px 12px;border-radius:20px;background:#fff;
-          border:1px solid var(--border);color:var(--ink2);text-decoration:none;
-          transition:all .16s;box-shadow:var(--sh)}
-  .flow a:hover{border-color:#bfdbfe;color:var(--accent);background:var(--accent-soft);
-                transform:translateY(-1px)}
+  /* Tab 导航 */
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;
+        position:sticky;top:58px;z-index:20;
+        background:rgba(247,249,252,.94);backdrop-filter:blur(10px);
+        padding:9px 0;margin-top:-9px}
+  .tab{padding:7px 15px;border-radius:9px;border:1px solid var(--border);
+       background:#fff;color:var(--ink2);font-size:12px;font-weight:500;
+       cursor:pointer;transition:all .15s;box-shadow:var(--sh);flex:none}
+  .tab:hover{border-color:#bfdbfe;color:var(--accent);background:var(--accent-soft)}
+  .tab.active{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;
+              border-color:var(--accent);box-shadow:0 2px 10px rgba(37,99,235,.3)}
+  .panel{display:none}
+  .panel.active{display:block;animation:fade .2s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 
   /* 提示块 */
   .note{font-size:11.5px;color:var(--ink2);margin:9px 0 0;padding:10px 13px;
@@ -319,12 +326,26 @@
 
   <!-- ================= 输出 ================= -->
   <section id="out">
-    <div class="flow">
-      <a href="#s1">① 吸气室 0-0</a><a href="#s2">② 叶轮进口 1-1</a>
-      <a href="#s3">③ 叶轮出口 2-2</a><a href="#s4">④ 无叶段 3-3</a>
-      <a href="#s5">⑤ 叶片扩压器 4-4</a><a href="#s6">⑥ 蜗壳 5-5</a>
-      <a href="#s7">⑦ 子午流道</a><a href="#s8">⑧ 校核</a>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="p1">① 吸气室 0-0</button>
+      <button class="tab" data-tab="p2">② 叶轮进口 1-1</button>
+      <button class="tab" data-tab="p3">③ 叶轮出口 2-2</button>
+      <button class="tab" data-tab="p4">④ 无叶段 3-3</button>
+      <button class="tab" data-tab="p5">⑤ 叶片扩压器 4-4</button>
+      <button class="tab" data-tab="p6">⑥ 蜗壳 5-5</button>
+      <button class="tab" data-tab="p7">⑦ 子午流道</button>
+      <button class="tab" data-tab="p8">⑧ 校核判据</button>
+      <button class="tab" data-tab="p9">⑨ CFturbo 清单</button>
+      <button class="tab" data-tab="p10">⑩ 敏感性</button>
     </div>
+    <div class="panels" id="panels">
+      <div class="panel active" id="p1"></div>
+      <div class="panel" id="p2"></div>
+      <div class="panel" id="p3"></div>
+      <div class="panel" id="p4"></div>
+      <div class="panel" id="p5"></div>
+      <div class="panel" id="p6"></div>
+      <div class="panel" id="p7">
     <div class="card" id="s7">
       <h2>⑦ 子午流道（五点四次贝塞尔 + 内切圆）
         <span class="tag" id="merTag">式(2-76)~(2-86)</span></h2>
@@ -341,8 +362,15 @@
       </div>
       <div class="body" id="merTable"></div>
     </div>
-    <div id="tables"></div>
-    <div id="s8"></div>
+      </div>
+      <div class="panel" id="p8"></div>
+      <div class="panel" id="p9">
+    <div class="card" id="cft">
+      <h2>⑨ CFturbo 填表清单 <span class="tag">角度已换算为「从切向测量」</span></h2>
+      <div class="body" id="cftBody"></div>
+    </div>
+      </div>
+      <div class="panel" id="p10">
     <div class="card" id="sweep">
       <h2>⑩ 单因素敏感性 <span class="tag">对应笔记「三参数合并报告无法归因」</span></h2>
       <div class="body">
@@ -367,9 +395,7 @@
         <div id="swTable"></div>
       </div>
     </div>
-    <div class="card" id="cft">
-      <h2>⑨ CFturbo 填表清单 <span class="tag">角度已换算为「从切向测量」</span></h2>
-      <div class="body" id="cftBody"></div>
+      </div>
     </div>
   </section>
 </div>
@@ -1342,8 +1368,9 @@ function render(o,p,m){
   }
   stH += `</div></div></div>`;
 
-  let h = stH;
-  h+=tableHTML('① 吸气室截面 0-0','式(2-2)~(2-4)',[
+  // 通流总览放 p1 顶部，其余各表分填
+  const P = id => document.getElementById(id);
+  let t1 = stH; t1 += tableHTML('① 吸气室截面 0-0','式(2-2)~(2-4)',[
     ['静温','T0',fmt(o.st.s0.T),'K','(2-2) T0 = Tin − c0²/(2Cp)'],
     ['静压','P0',fmt(o.st.s0.P/1000),'kPa','(2-3) P0 = Pin·(T0/Tin)^(k/(k−1))'],
     ['密度','ρ0',fmt(o.st.s0.rho),'kg/m³','(2-4) ρ0 = P0/(R·T0)'],
@@ -1351,7 +1378,7 @@ function render(o,p,m){
     ['马赫数','M0',fmt(o.st.s0.M),'-','c0/√(kRT0)'],
   ]);
 
-  h+=tableHTML('② 叶轮进口 1-1','式(2-7)~(2-22)',[
+  P('p2').innerHTML = tableHTML('② 叶轮进口 1-1','式(2-7)~(2-22)',[
     ['吸气室入口半径','r0',fmt(o.r0*1000),'mm','黄金分割求 w1 最小（(2-10)）','hl'],
     ['叶轮进口半径','r1',fmt(o.r1*1000),'mm','(2-12) r1 = k1·r0','hl'],
     ['轮毂半径','rh',fmt(o.rh*1000),'mm','(2-16) rh = Kd·r1'],
@@ -1367,7 +1394,7 @@ function render(o,p,m){
     ['叶尖相对马赫','Mw1',fmt(o.Mw1),'-','(2-19) w1t/a1','hl'],
   ]);
 
-  h+=tableHTML('③ 叶轮出口 2-2','式(2-24)~(2-39)',[
+  P('p3').innerHTML = tableHTML('③ 叶轮出口 2-2','式(2-24)~(2-39)',[
     ['圆周速度','u2',fmt(o.u2),'m/s','(2-6) u2 = √(lcs/Hb)'],
     ['出口半径','r2',fmt(o.r2*1000),'mm','(2-17) r2 = u2/ω'],
     ['出口宽度','b2',fmt(o.b2*1000),'mm','(2-34) b2 = kwid·r2'],
@@ -1390,7 +1417,7 @@ function render(o,p,m){
     ['估算间隙损失','Δη/η',fmt(o.eta_tc_loss*100,3),'点','≈ 0.8·(t/b2)，±50% 不确定度'],
   ]);
 
-  h+=tableHTML('④ 无叶扩压段 3-3','式(2-40)~(2-48)',[
+  P('p4').innerHTML = tableHTML('④ 无叶扩压段 3-3','式(2-40)~(2-48)',[
     ['出口半径','r3',fmt(o.r3*1000),'mm','(2-40) r3 = k3·r2','hl'],
     ['半径比','k3',fmt(o.r3/o.r2),'-','1.08~1.20'],
     ['速度','c3',fmt(o.c3),'m/s','(2-44) c3 = c2r·r2/r3'],
@@ -1401,7 +1428,7 @@ function render(o,p,m){
     ['流道宽度','b3',fmt(o.b3*1000),'mm','(2-46) b3 = b2'],
   ]);
 
-  h+=tableHTML('⑤ 叶片扩压器 4-4','式(2-49)~(2-65)',[
+  P('p5').innerHTML = tableHTML('⑤ 叶片扩压器 4-4','式(2-49)~(2-65)',[
     ['出口半径','r4',fmt(o.r4*1000),'mm','(2-54) r4 = r3·cosβ3A/cosβ4A','hl'],
     ['半径比','ky',fmt(o.ky),'-','(2-55) 1.20~1.40'],
     ['进口安装角','β3A',fmt(o.b3A),'°','(2-52) β3A = (β3+β4)/2'],
@@ -1418,7 +1445,7 @@ function render(o,p,m){
     ['静压','P4',fmt(o.P4/1000),'kPa','(2-64)'],
   ]);
 
-  h+=tableHTML('⑥ 蜗壳出口 5-5','式(2-66)~(2-75)',[
+  P('p6').innerHTML = tableHTML('⑥ 蜗壳出口 5-5','式(2-66)~(2-75)',[
     ['出口速度','c5',fmt(o.c5),'m/s','由 M5 目标定'],
     ['出口半径','r5',fmt(o.r5*1000),'mm','(2-70) r5 = √(A5/π)'],
     ['出口面积','A5',fmt(o.A5*1e4),'cm²','m/(ρ·c5)'],
@@ -1523,16 +1550,41 @@ function render(o,p,m){
   ch+=`<div class="note">合计：<b>${C.length-nf-nw}</b> 通过 · <b>${nw}</b> 警告 · <b>${nf}</b> 不通过。
     判据范围取自论文 2.1.3 节经验区间与 Aungier(2000)，超出 5% 记 FAIL。</div>`;
   ch+='</div></div>';
-  document.getElementById('s8').outerHTML=ch;
+  document.getElementById('p8').innerHTML = ch;
   document.getElementById('cftBody').innerHTML = cfturboTable(o,p,m);
 
-  document.getElementById('tables').innerHTML=h;
+  P('p1').innerHTML = t1;
 }
 
 /* =========================================================================
    7. 主流程
    ========================================================================= */
-let MER=null, OUT=null;
+let MER=null, OUT=null, CURTAB='p1';
+
+function drawAll(){
+  if(!MER || !OUT) return;
+  const m=MER, o=OUT.o;
+  requestAnimationFrame(()=>{
+    if(CURTAB==='p7'){
+      drawMeridian(document.getElementById('cvMer'), m, o);
+      drawArea(document.getElementById('cvArea'), m);
+      if(document.getElementById('cvTri')) drawVelTri(document.getElementById('cvTri'), o);
+    }
+    if(CURTAB==='p10'){
+      if(window._SW) drawSweep(document.getElementById('cvSweep'), window._SW.data, window._SW.meta, window._SW.cur);
+      else { try{ doSweep(); }catch(e){} }
+    }
+  });
+}
+
+function showTab(id){
+  CURTAB = id;
+  document.querySelectorAll('.tab').forEach(b=> b.classList.toggle('active', b.dataset.tab===id));
+  document.querySelectorAll('.panel').forEach(p=> p.classList.toggle('active', p.id===id));
+  drawAll();
+}
+document.querySelectorAll('.tab').forEach(b=> b.onclick=()=>showTab(b.dataset.tab));
+
 function run(){
   try{
     const p=readInputs();
@@ -1570,15 +1622,7 @@ function run(){
     const m=buildMeridian(o,p);
     MER=m; OUT={o,p};
     render(o,p,m);
-    requestAnimationFrame(()=>{
-      drawMeridian(document.getElementById('cvMer'), m, o);
-      drawArea(document.getElementById('cvArea'), m);
-      if(document.getElementById('cvTri')) drawVelTri(document.getElementById('cvTri'), o);
-      if(!window._swInit && document.getElementById('cvSweep')){
-        window._swInit = true;
-        try{ doSweep(); }catch(e){ /* 扫描失败不影响主流程 */ }
-      }
-    });
+    drawAll();
   }catch(e){
     console.error(e);
     alert('计算出错：'+e.message);
@@ -1599,10 +1643,7 @@ function resetIn(){ for(const k in DEF) document.getElementById(k).value=DEF[k];
   document.getElementById('i_b2mode').value='kwid';
   document.getElementById('i_optmode').value='w1'; run(); }
 
-window.addEventListener('resize', ()=>{ if(MER) requestAnimationFrame(()=>{
-  drawMeridian(document.getElementById('cvMer'), MER, OUT.o);
-  drawArea(document.getElementById('cvArea'), MER);
-  if(document.getElementById('cvTri')) drawVelTri(document.getElementById('cvTri'), OUT.o); }); });
+window.addEventListener('resize', ()=>{ drawAll(); });
 
 run();
 </script>
