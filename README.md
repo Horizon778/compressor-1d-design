@@ -10,10 +10,11 @@
 
 | 文件 | 内容 | 行数 |
 |---|---|---|
-| **`web/app.html`** | 最新版（= v3） | 1332 |
+| **`web/app.html`** | 最新版（= v4） | 1400 |
 | `web/versions/v1.html` | 首个版本：截面计算 / 子午流道 / 判据 / CFturbo 清单 | 1074 |
 | `web/versions/v2.html` | + 叶轮损失模型（5 项）+ 三层对账 | 1147 |
 | `web/versions/v3.html` | + r1 优化目标可选（ηp 最大）+ 单因素敏感性 | 1332 |
+| `web/versions/v4.html` | + UI 重做（配色/卡片/表格/图表），功能同 v3 | 1400 |
 
 任意两版可直接 diff，例如：
 

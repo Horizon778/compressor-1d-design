@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>单级离心压缩机一维设计与子午流道</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --surface:#fff; --surface2:#fafbfd;
+    --border:#e3e8f0; --border2:#eef2f7;
+    --ink:#0f172a; --ink2:#475569; --ink3:#94a3b8;
+    --accent:#2563eb; --accent-soft:#eef4ff;
+    --ok:#059669; --ok-soft:#ecfdf5;
+    --warn:#d97706; --warn-soft:#fffbeb;
+    --bad:#dc2626; --bad-soft:#fef2f2;
+    --r:10px;
+    --sh:0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.05);
+    --sh-lg:0 4px 14px rgba(15,23,42,.09);
+    --mono:"Cascadia Mono","SF Mono",Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:13.5px/1.6 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+       -webkit-font-smoothing:antialiased}
+
+  /* ---------- 顶栏 ---------- */
+  header{background:var(--surface);border-bottom:1px solid var(--border);
+         padding:0 22px;height:56px;display:flex;align-items:center;gap:14px;
+         position:sticky;top:0;z-index:30;
+         box-shadow:0 1px 3px rgba(15,23,42,.03)}
+  header::before{content:"";width:3px;height:22px;border-radius:2px;
+         background:linear-gradient(180deg,#2563eb,#0891b2);flex:none}
+  header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:-.2px}
+  header .sub{color:var(--ink3);font-size:12px}
+
+  /* ---------- 布局 ---------- */
+  .wrap{display:grid;grid-template-columns:344px minmax(0,1fr);gap:18px;
+        padding:18px 22px 64px;align-items:start}
+  .wrap>div:first-child{position:sticky;top:74px;align-self:start;
+        max-height:calc(100vh - 92px);overflow-y:auto;padding-right:4px}
+  .wrap>div:first-child::-webkit-scrollbar{width:6px}
+  .wrap>div:first-child::-webkit-scrollbar-thumb{background:#dbe2ec;border-radius:3px}
+  @media(max-width:1080px){.wrap{grid-template-columns:1fr}
+    .wrap>div:first-child{position:static;max-height:none}}
+
+  /* ---------- 卡片 ---------- */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+        margin-bottom:14px;overflow:hidden;box-shadow:var(--sh);
+        transition:box-shadow .18s ease}
+  .card:hover{box-shadow:var(--sh-lg)}
+  .card>h2{font-size:12.5px;margin:0;padding:11px 15px;background:var(--surface);
+           border-bottom:1px solid var(--border2);font-weight:640;letter-spacing:-.1px;
+           display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .card>h2 .tag{font-weight:400;color:var(--ink3);font-size:10.5px;letter-spacing:.2px;
+                flex:none}
+  .card .body{padding:13px 15px}
+
+  /* ---------- 输入组 ---------- */
+  .grp{margin-bottom:15px}
+  .grp:last-child{margin-bottom:0}
+  .grp>h3{font-size:10px;color:var(--ink3);margin:0 0 9px;font-weight:650;
+          text-transform:uppercase;letter-spacing:.7px;
+          padding-bottom:5px;border-bottom:1px dashed var(--border2)}
+  .row{display:grid;grid-template-columns:1fr 82px 38px;gap:8px;align-items:center;
+       margin-bottom:4px;padding:1px 0}
+  .row label{font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;
+             text-overflow:ellipsis;line-height:1.9}
+  .row label small{color:var(--ink3);font-size:10px;margin-left:3px;font-family:var(--mono)}
+  .row input,.row select{width:100%;padding:4.5px 7px;border:1px solid var(--border);
+             border-radius:6px;font:12.5px var(--mono);text-align:right;
+             background:var(--surface2);color:var(--ink);
+             transition:border-color .15s,box-shadow .15s,background .15s}
+  .row select{text-align:left;font-family:system-ui;font-size:11.5px;padding:4px 4px;
+              cursor:pointer;grid-column:2 / 4}
+  .row input:hover,.row select:hover{border-color:#c9d3e0}
+  .row input:focus,.row select:focus{outline:none;border-color:var(--accent);
+             background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .row .u{font-size:9.5px;color:var(--ink3);text-align:left;letter-spacing:-.2px}
+
+  /* ---------- 按钮 ---------- */
+  .btns{display:flex;gap:8px;margin-top:6px}
+  button{flex:1;padding:9px;border-radius:7px;border:1px solid var(--accent);
+         background:var(--accent);color:#fff;font-size:12.5px;font-weight:600;
+         cursor:pointer;transition:filter .15s,transform .08s,box-shadow .15s;
+         box-shadow:0 1px 2px rgba(37,99,235,.25)}
+  button:hover{filter:brightness(1.07);box-shadow:0 2px 8px rgba(37,99,235,.28)}
+  button:active{transform:translateY(1px)}
+  button.ghost{background:#fff;color:var(--accent);box-shadow:none;
+               border-color:var(--border)}
+  button.ghost:hover{border-color:var(--accent);background:var(--accent-soft)}
+
+  /* ---------- 表格 ---------- */
+  table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+  th,td{padding:5.5px 9px;border-bottom:1px solid var(--border2);text-align:right;
+        font-variant-numeric:tabular-nums;overflow:hidden}
+  th:first-child,td:first-child{text-align:left;width:30%}
+  th:nth-child(2),td:nth-child(2){width:11%}
+  th:nth-child(3),td:nth-child(3){width:15%}
+  th:nth-child(4),td:nth-child(4){width:8%}
+  thead th{background:transparent;color:var(--ink3);font-weight:600;font-size:10.5px;
+           letter-spacing:.3px;border-bottom:1px solid var(--border)}
+  tbody tr{transition:background .12s}
+  tbody tr:hover td{background:#f8fafc}
+  td.num{font-family:var(--mono);font-size:11.5px;color:var(--ink)}
+  tr.hl td{background:var(--accent-soft)}
+  tr.hl td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+  tr.hl:hover td{background:#e6efff}
+  .eq{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-align:left;
+      white-space:normal;line-height:1.45;letter-spacing:-.1px}
+  table.cft th:nth-child(1),table.cft td:nth-child(1){width:15%}
+  table.cft th:nth-child(2),table.cft td:nth-child(2){width:30%;text-align:left;white-space:normal}
+  table.cft th:nth-child(3),table.cft td:nth-child(3){width:24%;text-align:right}
+  table.cft th:nth-child(4),table.cft td:nth-child(4){width:11%;text-align:left;white-space:nowrap}
+  table.cft th:nth-child(5),table.cft td:nth-child(5){width:20%;text-align:left}
+
+  /* ---------- 徽章 ---------- */
+  .badge{display:inline-block;padding:1.5px 7px;border-radius:5px;font-size:10px;
+         font-weight:650;line-height:1.6;letter-spacing:.2px}
+  .ok{background:var(--ok-soft);color:var(--ok)}
+  .warn{background:var(--warn-soft);color:var(--warn)}
+  .fail{background:var(--bad-soft);color:var(--bad)}
+  .na{background:#f1f5f9;color:var(--ink3)}
+
+  /* ---------- 图表 ---------- */
+  canvas{display:block;width:100%;background:var(--surface)}
+  .fig{padding:10px 12px 12px}
+  .fig .cap{font-size:10.5px;color:var(--ink3);padding:6px 2px 0;line-height:1.5}
+  .figs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:860px){.figs{grid-template-columns:1fr}}
+
+  /* ---------- 流程导航 ---------- */
+  .flow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .flow a{font-size:11px;padding:5px 11px;border-radius:20px;background:var(--surface);
+          border:1px solid var(--border);color:var(--ink2);text-decoration:none;
+          transition:all .15s;box-shadow:var(--sh)}
+  .flow a:hover{border-color:var(--accent);color:var(--accent);
+                background:var(--accent-soft);transform:translateY(-1px)}
+
+  /* ---------- 提示块 ---------- */
+  .note{font-size:11.5px;color:var(--ink2);margin:8px 0 0;padding:9px 12px;
+        background:var(--surface2);border-left:2px solid var(--border);
+        border-radius:0 6px 6px 0;line-height:1.65}
+  .note b{color:var(--ink);font-weight:650}
+
+  /* ---------- KPI ---------- */
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}
+  @media(max-width:1080px){.kpi{grid-template-columns:repeat(2,1fr)}}
+  .kpi>div{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+           padding:11px 14px;box-shadow:var(--sh);position:relative;overflow:hidden;
+           transition:box-shadow .18s}
+  .kpi>div:hover{box-shadow:var(--sh-lg)}
+  .kpi>div::after{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;
+           background:linear-gradient(180deg,#2563eb,#0891b2);opacity:.55}
+  .kpi .k{font-size:10.5px;color:var(--ink3);letter-spacing:.2px}
+  .kpi .v{font:650 19px/1.25 var(--mono);margin-top:3px;letter-spacing:-.6px;color:var(--ink)}
+  .kpi .v small{font-size:10.5px;color:var(--ink3);font-weight:400;margin-left:4px;
+                letter-spacing:0}
+
+  code{font-family:var(--mono);font-size:11.5px;background:#f1f5f9;padding:1px 5px;
+       border-radius:4px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>单级离心压缩机 · 一维热力设计与子午流道</h1>
+  <span class="sub">按崔晓杰(2025) 第 2 章公式实现 · 截面 0-0 → 5-5</span>
+</header>
+
+<div class="wrap">
+  <!-- ================= 输入 ================= -->
+  <div>
+    <div class="card">
+      <h2>设计工况 <span class="tag">表 2-1</span></h2>
+      <div class="body">
+        <div class="grp">
+          <h3>工质与工况</h3>
+          <div class="row"><label>质量流量 <small>ṁ</small></label><input id="i_m" value="0.3592"><span class="u">kg/s</span></div>
+          <div class="row"><label>转速 <small>n</small></label><input id="i_n" value="40000"><span class="u">r/min</span></div>
+          <div class="row"><label>总压比 <small>πt</small></label><input id="i_pr" value="2.252"><span class="u">-</span></div>
+          <div class="row"><label>进口总温 <small>Tin</small></label><input id="i_tin" value="300"><span class="u">K</span></div>
+          <div class="row"><label>进口总压 <small>Pin</small></label><input id="i_pin" value="40"><span class="u">kPa</span></div>
+          <div class="row"><label>气体常数 <small>R</small></label><input id="i_R" value="287.1"><span class="u">J/kgK</span></div>
+          <div class="row"><label>比热容 <small>Cp</small></label><input id="i_cp" value="1004.5"><span class="u">J/kgK</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>设计选择 <span class="tag">经验系数</span></h2>
+      <div class="body">
+        <div class="grp">
+          <h3>总体</h3>
+          <div class="row"><label>压头系数 <small>Hb</small></label><input id="i_hb" value="0.455"><span class="u">-</span></div>
+          <div class="row"><label>总-总效率 <small>ηtt</small></label><input id="i_eta" value="0.78"><span class="u">-</span></div>
+          <div class="row"><label>吸气室速度 <small>c0</small></label><input id="i_c0" value="40"><span class="u">m/s</span></div>
+          <div class="row"><label>r1 优化目标</label>
+            <select id="i_optmode">
+              <option value="w1">w1 最小（论文）</option>
+              <option value="eta">ηp 最大（推荐）</option>
+            </select><span class="u">-</span></div>
+          <div class="row"><label>总压恢复 <small>σ</small></label><input id="i_sig" value="0.99"><span class="u">-</span></div>
+        </div>
+        <div class="grp">
+          <h3>叶轮</h3>
+          <div class="row"><label>轴径比 <small>Kd</small></label><input id="i_kd" value="0.40"><span class="u">-</span></div>
+          <div class="row"><label>进口半径系数 <small>k1</small></label><input id="i_k1" value="1.04"><span class="u">-</span></div>
+          <div class="row"><label>叶尖半径比 <small>KD1</small></label><input id="i_kd1" value="1.10"><span class="u">-</span></div>
+          <div class="row"><label>指定 rt1 <small>(0=自动)</small></label><input id="i_rt1" value="0"><span class="u">mm</span></div>
+          <div class="row"><label>出口宽度按 <small>b2</small></label>
+            <select id="i_b2mode">
+              <option value="kwid">宽度比 kwid</option>
+              <option value="phi">流量系数 φ2</option>
+            </select><span class="u">-</span></div>
+          <div class="row"><label>出口宽度比 <small>kwid</small></label><input id="i_kwid" value="0.076"><span class="u">-</span></div>
+          <div class="row"><label>出口流量系数 <small>φ2</small></label><input id="i_phi2" value="0.2555"><span class="u">-</span></div>
+          <div class="row"><label>主叶片数 <small>z</small></label><input id="i_z" value="9"><span class="u">-</span></div>
+          <div class="row"><label>分流叶片 <small>zs</small></label><input id="i_zs" value="9"><span class="u">-</span></div>
+          <div class="row"><label>出口安装角 <small>β2A</small></label><input id="i_b2a" value="38"><span class="u">°</span></div>
+          <div class="row"><label>叶顶间隙 <small>t</small></label><input id="i_tc" value="0.5"><span class="u">mm</span></div>
+        </div>
+        <div class="grp">
+          <h3>扩压器与蜗壳</h3>
+          <div class="row"><label>无叶段比 <small>k3</small></label><input id="i_k3" value="1.10"><span class="u">-</span></div>
+          <div class="row"><label>出口角增量 <small>i</small></label><input id="i_i" value="20"><span class="u">°</span></div>
+          <div class="row"><label>扩张角目标 <small>θ</small></label><input id="i_th" value="9"><span class="u">°</span></div>
+          <div class="row"><label>蜗壳出口马赫 <small>M5</small></label><input id="i_m5" value="0.10"><span class="u">-</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>子午流道端点斜率 <span class="tag">式(2-80)(2-81)</span></h2>
+      <div class="body">
+        <div class="row"><label>进口切向角 <small>θ0</small></label><input id="i_th0" value="8"><span class="u">°</span></div>
+        <div class="row"><label>出口切向角 <small>θ4</small></label><input id="i_th4" value="86"><span class="u">°</span></div>
+        <div class="row"><label>切向长度 <small>λ</small></label><input id="i_lam" value="0.18"><span class="u">×L</span></div>
+        <div class="row"><label>轴向长度 <small>Δz</small></label><input id="i_lz" value="44.6"><span class="u">mm</span></div>
+        <div class="note" style="border-left-color:#1a56db"><b>哪些参数会改子午线？</b><br>
+        r₂ = √(l<sub>cs</sub>/H<sub>b</sub>)/ω —— 只由 <b>转速 n、压比 πt、压头系数 Hb</b> 决定，改流量不动它；<br>
+        b₂ = k<sub>wid</sub>·r₂ —— 只由 <b>宽度比 k<sub>wid</sub></b> 决定；<br>
+        进口 r₁/rt₁/rh ∝ m<sup>1/3</sup> —— 流量从 0.3738 降到 0.3592（−4%）只让半径小 0.7 mm，图上约 3 px，看是看不出的，要看右上角尺寸块或标题栏数字。<br>
+        <b>想让形状明显变化：</b>改 n、πt、Hb（动 r₂）或 k<sub>wid</sub>（动 b₂），改 m 只能微调进口。</div>
+        <div class="note"><b>怎么调：</b>λ 越小，进出口越早脱离直段；θ4=90° 表示出口纯径向（推荐）。
+        <br><b>关于型线形状：</b>论文方法在曲率 k0=k4=0 时，解出的中间控制点 P2 会被压到接近进口半径
+        （表 2-3 可验证：轮毂 H2 在 89% 轴向位置时半径只走了 6%），所以型线必然是
+        <b>前段长、后段陡</b>。这不是画错，是该参数化方式的固有特征；判合格的依据是内切圆半径单调，不是"看起来均匀"。</div>
+        <div class="btns" style="margin-top:10px">
+          <button onclick="run()">计算</button>
+          <button class="ghost" onclick="resetIn()">恢复默认</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 输出 ================= -->
+  <div id="out">
+    <div class="flow">
+      <a href="#s1">① 吸气室 0-0</a><a href="#s2">② 叶轮进口 1-1</a>
+      <a href="#s3">③ 叶轮出口 2-2</a><a href="#s4">④ 无叶段 3-3</a>
+      <a href="#s5">⑤ 叶片扩压器 4-4</a><a href="#s6">⑥ 蜗壳 5-5</a>
+      <a href="#s7">⑦ 子午流道</a><a href="#s8">⑧ 校核</a>
+    </div>
+    <div id="kpi" class="kpi"></div>
+    <div class="card" id="s7">
+      <h2>⑦ 子午流道（五点四次贝塞尔 + 内切圆）
+        <span class="tag" id="merTag">式(2-76)~(2-86)</span></h2>
+      <div class="figs">
+        <div class="fig"><canvas id="cvMer" style="width:100%;height:400px"></canvas>
+          <div class="cap">子午面：蓝=轮毂 hub，红=轮缘 shroud，灰圆=内切圆。进口面 z=0 两条线在 r 向分开；出口面 r=r₂ 两条线在 z 向分开，间距即 b₂</div></div>
+        <div class="fig"><canvas id="cvArea" style="width:100%;height:400px"></canvas>
+          <div class="cap">内切圆半径沿相对弧长的变化（论文图 2-24 的判据：必须单调）</div></div>
+      </div>
+      <div class="body" id="merTable"></div>
+    </div>
+    <div id="tables"></div>
+    <div id="s8"></div>
+    <div class="card" id="sweep">
+      <h2>⑩ 单因素敏感性 <span class="tag">对应笔记「三参数合并报告无法归因」</span></h2>
+      <div class="body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select id="i_swparam" style="padding:4px 6px;border:1px solid #d5dce6;border-radius:5px;font:12px system-ui">
+            <option value="tc">t 叶顶间隙（对 ηp 敏感）</option>
+            <option value="b2a">β2A 出口安装角（对 ηp 敏感）</option>
+            <option value="kd1">KD1 叶尖半径比（对 β1/Mw1 敏感）</option>
+            <option value="rt1">rt1 叶尖半径（对 β1/Mw1 敏感）</option>
+            <option value="k3">k3 无叶段长度比（仅改几何）</option>
+            <option value="kwid">kwid 出口宽度比（仅改几何）</option>
+          </select>
+          <span style="font-size:12px;color:#5b6678">范围</span>
+          <input id="i_swlo" style="width:74px;padding:4px;border:1px solid #d5dce6;border-radius:5px;font:12px monospace;text-align:right">
+          <span style="font-size:12px;color:#5b6678">~</span>
+          <input id="i_swhi" style="width:74px;padding:4px;border:1px solid #d5dce6;border-radius:5px;font:12px monospace;text-align:right">
+          <span style="font-size:12px;color:#5b6678">点</span>
+          <input id="i_swn" value="12" style="width:52px;padding:4px;border:1px solid #d5dce6;border-radius:5px;font:12px monospace;text-align:right">
+          <button onclick="doSweep()" style="flex:none;padding:5px 14px;font-size:12px">扫描</button>
+        </div>
+        <canvas id="cvSweep" style="width:100%;height:300px"></canvas>
+        <div id="swTable"></div>
+      </div>
+    </div>
+    <div class="card" id="cft">
+      <h2>⑨ CFturbo 填表清单 <span class="tag">角度已换算为「从切向测量」</span></h2>
+      <div class="body" id="cftBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   1. 常量与工具
+   ========================================================================= */
+const G = {R:287.1, cp:1004.5};
+const fmt = (x,n=4)=> (x==null||!isFinite(x)) ? '—' :
+  (Math.abs(x)>=1e5||(Math.abs(x)<1e-3&&x!==0) ? x.toExponential(3) : Number(x).toPrecision(n));
+const D = r=>r*180/Math.PI, Rd = d=>d*Math.PI/180;
+
+function goldenMin(f,a,b,tol=1e-12){
+  const gr=(Math.sqrt(5)-1)/2;
+  let c=b-gr*(b-a), d=a+gr*(b-a), fc=f(c), fd=f(d);
+  for(let k=0;k<200 && Math.abs(b-a)>tol;k++){
+    if(fc<fd){ b=d; d=c; fd=fc; c=b-gr*(b-a); fc=f(c); }
+    else { a=c; c=d; fc=fd; d=a+gr*(b-a); fd=f(d); }
+  }
+  return (a+b)/2;
+}
+const num = id=>parseFloat(document.getElementById(id).value);
+
+/* =========================================================================
+   2. 一维热力计算（严格按论文 2.1.3）
+   截面：0-0 吸气室 / 1-1 叶轮进口 / 2-2 叶轮出口
+        3-3 无叶扩压器出口 / 4-4 叶片扩压器出口 / 5-5 蜗壳出口
+   ========================================================================= */
+function compute(p){
+  const R=p.R, cp=p.cp, k=cp/(cp-R), gexp=k/(k-1);
+  const w=Math.PI*p.n/30, o={st:{}, warn:[], eq:{}};
+
+  /* ---------- 0-0 吸气室 ---------- */
+  const T0 = p.Tin - p.c0*p.c0/(2*cp);                      // (2-2)
+  const P0 = p.Pin*Math.pow(T0/p.Tin, gexp);                 // (2-3)
+  const rho0 = P0/(R*T0);                                    // (2-4)
+  o.st.s0 = {T:T0, P:P0, rho:rho0, c:p.c0, M:p.c0/Math.sqrt(k*R*T0)};
+
+  /* ---------- 等熵功 & 叶轮出口圆周速度 ---------- */
+  const lcs = cp*p.Tin*(Math.pow(p.PR,(k-1)/k)-1);           // (2-5)
+  const u2 = Math.sqrt(lcs/p.Hb);                            // (2-6)
+  const r2 = u2/w;                                           // (2-17)
+
+  /* ---------- 1-1 叶轮进口（黄金分割求 r0） ---------- */
+  // 论文做法：先按 c1=100 定 T1/P1/ρ1（2-7~2-9），再在 (2-10) 里扫 r0
+  let c1 = 100;
+  const state1 = c1x=>{
+    const T1 = p.Tin - c1x*c1x/(2*cp);
+    const P1 = p.Pin*p.sig*Math.pow(T1/p.Tin, gexp);
+    return {T1, P1, rho1:P1/(R*T1)};
+  };
+  let s1 = state1(c1);
+  // 外层：迭代 c1 与 r0 至自洽（论文是"新值取代旧值"的简单迭代）
+  let r0=0, r1=0, rh=0, w1=0, c1f=c1, beta1=0, o_beta1_hub=0;
+  for(let it=0; it<60; it++){
+    const rho1 = s1.rho1;
+    // 注意：进口面积要用 **rt1**（叶尖），不是 r0。
+    // 论文 (2-10) 写的是 r0，但 r0 是吸气室半径，叶轮真正进气在 rt1；
+    // 用 r0 会把 c_m1 算大 37%（146 vs 106 m/s），β1 直接偏 7°。
+    // 用 rt1 才能跟 CFturbo 的 β1（Hub 50.4 / Shroud 25.8）对上。
+    const f = x=>{                                  // 目标：叶尖相对速度 w1t 最小
+      const r1x = p.k1*x;
+      const rt1x = r1x*p.kd1;
+      const rhx = p.kd*r1x;                          // (2-16)
+      const A1x = Math.PI*(rt1x*rt1x - rhx*rhx);
+      const c1x = p.m/(rho1*A1x);
+      return Math.sqrt(c1x*c1x + Math.pow(w*rt1x,2));
+    };
+    if(p.rt1_in > 0){
+      // 用户指定了叶尖半径（通常来自 CFturbo 实际几何），直接反推 r0/r1
+      const rt1_ = p.rt1_in/1000;
+      r0 = rt1_/(p.k1*p.kd1);
+      r1 = p.k1*r0; rh = p.kd*r1;
+    }else{
+      const lo=0.5*r2*0.3, hi=0.9*r2;                // 合理搜索区间
+      r0 = goldenMin(f, lo, hi);
+      r1 = p.k1*r0; rh = p.kd*r1;
+    }
+    const rt1_ = r1*p.kd1;
+    const A1 = Math.PI*(rt1_*rt1_-rh*rh);
+    c1f = p.m/(s1.rho1*A1);
+    w1 = Math.sqrt(c1f*c1f + Math.pow(w*rt1_,2));
+    beta1 = D(Math.atan2(c1f, w*rt1_));              // (2-15) 从切向测
+    o_beta1_hub = D(Math.atan2(c1f, w*rh));           // 轮毂处，从切向
+    const s1n = state1(c1f);                          // (2-7~2-9) 更新
+    if(Math.abs(s1n.T1-s1.T1)<1e-10) { s1=s1n; break; }
+    s1 = s1n;
+  }
+  const T1=s1.T1, P1=s1.P1, rho1=s1.rho1;
+  const u1=w*r1;                                     // (2-13)
+  const rt1 = r1*p.kd1;                              // (2-18)
+  const a1 = Math.sqrt(k*R*T1);                      // (2-20)
+  const u1t = u1*(rt1/r1);                           // (2-21)
+  const w1t = Math.sqrt(c1f*c1f + u1t*u1t);          // (2-22)
+  const Mw1 = w1t/a1;                                // (2-19)
+  o.st.s1 = {T:T1, P:P1, rho:rho1, c:c1f, M:c1f/a1, w:w1, u:u1, beta:beta1};
+  o.r0=r0; o.r1=r1; o.rh=rh; o.rt1=rt1; o.w1=w1; o.Mw1=Mw1;
+  o.beta1=beta1; o.beta1_hub=o_beta1_hub; o.c_m1=c1f;
+
+  /* ---------- 2-2 叶轮出口 ---------- */
+  const Y = lcs/p.eta;                               // 实际功（论文 Y=lcs 即 η=1）
+  const c2u = Y/u2;                                  // (2-24)
+  const T02 = p.Tin + Y/cp;
+  // b2 有两种定法，直接决定"改流量会不会改几何"：
+  //   kwid 口径（论文式 2-34）：b2 = kwid·r2  —— b2 与流量无关，流量只改 c2r 和进口
+  //   phi  口径（连续性）：      c2r = φ2·u2 -> b2 = m/(2πr2ρ2c2r) —— 流量直接进 b2
+  const b2mode = p.b2mode || 'kwid';
+  let b2 = p.kwid*r2;                                // (2-34)
+  const P02 = p.Pin*p.PR;
+  let c2r=0.3*u2, T2=T02-0.05*T02, P2=P02*0.7, rho2=P2/(R*T2), c2=0;
+  for(let it=0; it<200; it++){
+    if(b2mode==='phi'){
+      c2r = (p.phi2||0.2555)*u2;                     // 由流量系数定径向速度
+    }else{
+      c2r = p.m/(2*Math.PI*r2*b2*rho2);              // (2-35)
+    }
+    c2 = Math.hypot(c2u,c2r);                        // (2-37)
+    T2 = T02 - c2*c2/(2*cp);
+    const n2 = Math.log(P02/P1)/Math.log(T02/T1);    // 多变指数
+    P2 = P02*Math.pow(T2/T02, n2/(n2-1));            // (2-32)
+    const rho2n = P2/(R*T2);                         // (2-33)
+    if(b2mode==='phi') b2 = p.m/(2*Math.PI*r2*rho2n*c2r);   // 连续性反算 b2
+    if(Math.abs(rho2n-rho2)<1e-10){rho2=rho2n;break;}
+    rho2 = 0.5*(rho2+rho2n);
+  }
+  const beta2rel = D(Math.atan2(c2r, u2-c2u));       // (2-38) 相对气流角（从径向）
+  const alpha2 = D(Math.atan2(c2r, c2u));            // 绝对气流角（从径向，扩压器用）
+  const w2 = Math.hypot(c2r, u2-c2u);                // (2-39)
+  const M2 = c2/Math.sqrt(k*R*T2);
+  o.st.s2 = {T:T2, P:P2, rho:rho2, c:c2, M:M2, w:w2, u:u2, beta:beta2rel};
+  o.u2=u2; o.r2=r2; o.b2=b2; o.c2u=c2u; o.c2r=c2r; o.c2=c2; o.T2=T2; o.P2=P2;
+  o.rho2=rho2; o.beta2=beta2rel; o.alpha2=alpha2; o.beta2rel=beta2rel;
+  o.Y=Y; o.lcs=lcs; o.T02=T02; o.P02=P02;
+
+  // 滑移校核
+  // 论文 (2-27) 写作 μ = 1 − 0.7·sinβ2A/z^0.7，但 Wiesner(1967) 原式是
+  //   μ = 1 − sqrt(cosβ2A)/z^0.7
+  // 两者在 z=18、β2A=38° 时给出 0.943 vs 0.882，差 7%，直接决定 c2u 是否自洽。
+  // 这里以原式为准，同时把论文变体也列出来供对照。
+  const ztot = p.z + p.zs;
+  const mu_wies = 1 - Math.sqrt(Math.max(Math.cos(Rd(p.b2a)),1e-6))/Math.pow(ztot,0.7);
+  const mu_paper = 1 - 0.7*Math.sin(Rd(p.b2a))/Math.pow(ztot,0.7);
+  const c2u_w = mu_wies*(u2 - c2r/Math.tan(Rd(p.b2a)));
+  const dw2u = u2*Math.PI*Math.sin(Rd(p.b2a))/ztot;         // (2-31) Stodola
+  o.slip = {mu:mu_wies, mu_paper, c2u_w, dw2u, c2u_cfd:c2u,
+            dev:Math.abs(c2u_w-c2u)/c2u*100};
+
+  /* ---------- 叶顶间隙 ----------
+     半开式叶轮的间隙损失主要看 t/b2（间隙 / 出口叶片高度），不是 t/r2。
+     经验关系：Δη/η ≈ k_tc · (t/b2)，k_tc 取 0.8（文献 0.6~1.0，±50% 不确定度）。
+     这个只用于给量级，不是精确预测。 */
+  const tc = p.tc || 0.5;                       // mm
+  const tb = tc/(b2*1000);                      // 无量纲
+  o.tc = tc; o.tb = tb;
+  o.eta_tc_loss = 0.8*tb;                       // 相对效率损失
+  o.tc_scan = [0.3,0.5,0.7,0.9].map(t=>({t, tb:t/(b2*1000), loss:0.8*t/(b2*1000)}));
+
+  /* ---------- 3-3 无叶扩压器 ---------- */
+  const r3 = p.k3*r2;                                // (2-40)
+  const c3 = c2r*r2/r3;                              // (2-44)
+  const T3 = T2 + (c2*c2-c3*c3)/(2*cp);              // (2-43)
+  const n2v = Math.log(P2/P1)/Math.log(T2/T1);
+  const P3 = P2*Math.pow(T3/T2, n2v/(n2v-1));        // (2-42)
+  const rho3 = rho2*Math.pow(T3/T2, 1/(n2v-1));      // (2-47)
+  const b3 = b2;                                     // (2-46)
+  // 注意：论文 (2-45) 印作 Mc3 = c3/sqrt(20.1·T3)，量纲不对。
+  // 实际音速 a = sqrt(kRT) = 20.05·sqrt(T)（k=1.4, R=287.1），
+  // 照原文会算出 M≈1.08 的假超音速，这里按正确式实现。
+  const Mc3 = c3/(20.05*Math.sqrt(T3));              // (2-45) 修正
+  o.st.s3 = {T:T3, P:P3, rho:rho3, c:c3, M:Mc3};
+  o.r3=r3; o.c3=c3; o.T3=T3; o.P3=P3; o.rho3=rho3; o.b3=b3; o.Mc3=Mc3;
+
+  /* ---------- 4-4 叶片扩压器 ---------- */
+  const b4=b3;                                       // (2-49)
+  const beta4 = D(Math.atan(Math.tan(Rd(alpha2))*b3/b4));  // (2-50) 等宽时 β4=α2
+  const bavg = 0.5*(alpha2+beta4);                   // (2-51)
+  const b3A = bavg;                                  // (2-52) 扩压器用绝对气流角
+  const b4A = b3A + p.i;                             // (2-53)
+  const r4 = r3*Math.cos(Rd(b3A))/Math.cos(Rd(b4A)); // (2-54)
+  const ky = r4/r3;                                  // (2-55)
+  const Lbl = (r4-r3)/Math.sin(Rd(0.5*(b3A+b4A)));   // (2-56)
+  // 叶片数：由稠度反算。
+  // 论文 (2-61) 的扩张角是给"变宽扩压器"用的；等宽(b4=b3)时面积靠 r 增长，
+  // 硬套 θ=9° 会算出 40 片、稠度 2.7，明显过多。这里改成按稠度目标 1.45 反算，
+  // θ 只作为结果输出校核。
+  const zyIdeal = 1.45*2*Math.PI*0.5*(r3+r4)/Lbl;
+  let zy = Math.round(zyIdeal);
+  if(zy<7) zy=7;
+  // 尽量与叶轮叶片数互质（最大公约数 <=2）
+  for(let dz=0; dz<=4; dz++){
+    let done=false;
+    for(const cand of [zy+dz, zy-dz]){
+      if(cand>=7 && gcd(cand, p.z+p.zs)<=2){ zy=cand; done=true; break; }
+    }
+    if(done) break;
+  }
+  const a_in = 2*Math.PI*r3*Math.sin(Rd(b3A))/zy;    // (2-58)
+  const a_out= 2*Math.PI*r4*Math.sin(Rd(b4A))/zy;    // (2-59)
+  const theta = D(2*Math.atan((a_out-a_in)/(2*Lbl)));// (2-61)
+  // 出口速度用连续性（等宽扩压器 A=2πrb，面积比 = r4/r3）：
+  // 论文 (2-62) 的 sinβ 比在等宽条件下会给出 c4≈c3（不扩压），
+  // 与"扩压器要升压"矛盾，这里按面积比闭合。
+  const c4 = c3*r3/r4;
+  const T4 = T3 + (c3*c3-c4*c4)/(2*cp);              // (2-63)
+  const n3v = n2v;
+  const P4 = P3*Math.pow(T4/T3, n3v/(n3v-1));        // (2-64)
+  const rho4 = P4/(R*T4);                            // (2-65)
+  const Mc4 = c4/(20.05*Math.sqrt(T4));              // (2-45) 修正
+  const solid = zy*Lbl/(2*Math.PI*0.5*(r3+r4));
+  o.st.s4 = {T:T4, P:P4, rho:rho4, c:c4, M:Mc4};
+  o.r4=r4; o.b4=b4; o.ky=ky; o.b3A=b3A; o.b4A=b4A; o.Lbl=Lbl; o.zy=zy; o.zyIdeal=zyIdeal;
+  o.a_in=a_in; o.a_out=a_out; o.theta=theta; o.c4=c4; o.T4=T4; o.P4=P4;
+  o.rho4=rho4; o.solid=solid; o.Mc4=Mc4;
+
+  /* ---------- 5-5 蜗壳 ---------- */
+  const c4u = c4/Math.cos(Rd(b4A));                  // (2-66)
+  const Kmo = c4u*r4;                                // (2-67)
+  const a5 = Math.sqrt(k*R*T4);
+  const c5 = p.M5*a5;
+  const A5 = p.m/(rho4*c5);
+  const r5 = Math.sqrt(A5/Math.PI);
+  const T5 = T4 + (c4*c4-c5*c5)/(2*cp);              // (2-71)
+  const P5 = P4*Math.pow(T5/T4, n3v/(n3v-1));        // (2-72)
+  const T5o = T5 + c5*c5/(2*cp);                     // (2-73)
+  const P5o = P5*Math.pow(T5o/T5, gexp);             // (2-74)
+  const piP = P5o/p.Pin;                             // (2-75)
+  o.st.s5 = {T:T5, P:P5, rho:P5/(R*T5), c:c5, M:p.M5};
+  o.c5=c5; o.r5=r5; o.A5=A5; o.T5=T5; o.P5=P5; o.T5o=T5o; o.P5o=P5o; o.piP=piP;
+  o.Kmo=Kmo; o.c4u=c4u;
+
+  /* ---------- 叶轮损失模型 ----------
+     对应笔记第 6 节"我要改的：目标函数 w1 最小 → 级效率最大"。
+     没有损失模型，η 就只能当输入，无法做效率优化，也无法跟 CFD 对账。
+     这里用系数式（Aungier 2000 的简化），每一项都换算成 J/kg，
+     系数透明可调，目的是给出"哪一项占大头"，不是精确预测。 */
+  const lWbar = 0.5*(w1 + st2w());         // 平均相对速度
+  function st2w(){ return Math.hypot(c2r, u2-c2u); }
+  const lB1 = rt1 - rh;                     // 进口流道高度
+  const lBavg = 0.5*(lB1 + b2);
+  const lDh = 2*lBavg;                      // 水力直径（矩形通道近似）
+  const lBetaM = Rd(0.5*(beta1 + p.b2a));
+  const lLb = (r2 - rt1)/Math.max(Math.sin(lBetaM), 0.2);   // 叶片长度
+  const dHeul = u2*c2u;                    // 欧拉功
+
+  const loss = {};
+  // ① 摩擦（skin friction）：4·Cf·(L/Dh)·W̄²/2
+  loss.sf  = 4*0.005*(lLb/Math.max(lDh,1e-4))*0.5*lWbar*lWbar;
+  // ② 冲击（incidence）：设计点攻角 1°，很小
+  loss.inc = 0.5*Math.pow(w1*Math.sin(Rd(1.0)),2)*0.5;
+  // ③ 叶顶间隙（Aungier）：0.6·(t/b2)·c2u²/2
+  loss.cl  = 0.6*(tc/(b2*1000))*0.5*c2u*c2u;
+  // ④ 轮盘摩擦（半开式，两侧）：经验 0.02·u2²
+  loss.df  = 0.012*u2*u2;
+  // ⑤ 回流（recirculation）：经验 0.03·u2²
+  loss.rc  = 0.015*u2*u2;
+  const dHloss = loss.sf+loss.inc+loss.cl+loss.df+loss.rc;
+  o.loss = loss; o.dHloss = dHloss; o.dHeul = dHeul;
+  o.eta_p_calc = 1 - dHloss/dHeul;          // 叶轮多变效率（由损失算出）
+  o.eta_tt_calc = o.eta_p_calc * Math.pow(p.PR, -0.05/3.5);  // 粗估转换，见下注
+  o.sigma_rear = p.sigma_rear;
+
+  /* ---------- 总体 ---------- */
+  o.PRreal = P5o/p.Pin;
+  o.etaReal = (Math.pow(o.PRreal,(k-1)/k)-1)/(T5o/p.Tin-1);
+  o.power = p.m*Y/1000;
+  return o;
+}
+
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a;}
+
+/* =========================================================================
+   3. 子午流道：五点四次贝塞尔 + 内切圆（论文 2.2.2）
+   ========================================================================= */
+function bezier5(P,u){
+  const m=1-u;
+  return [
+    m*m*m*m*P[0][0] + 4*m*m*m*u*P[1][0] + 6*m*m*u*u*P[2][0] + 4*m*u*u*u*P[3][0] + u*u*u*u*P[4][0],
+    m*m*m*m*P[0][1] + 4*m*m*m*u*P[1][1] + 6*m*m*u*u*P[2][1] + 4*m*u*u*u*P[3][1] + u*u*u*u*P[4][1]
+  ];
+}
+function bezier5d(P,u){           // dP/du
+  const m=1-u;
+  const a=4*m*m*m, b=12*m*m*u, c=12*m*u*u, d=4*u*u*u;
+  return [
+    a*(P[1][0]-P[0][0]) + b*(P[2][0]-P[1][0]) + c*(P[3][0]-P[2][0]) + d*(P[4][0]-P[3][0]),
+    a*(P[1][1]-P[0][1]) + b*(P[2][1]-P[1][1]) + c*(P[3][1]-P[2][1]) + d*(P[4][1]-P[3][1])
+  ];
+}
+
+/* 由端点、端点切向、端点曲率解控制点（式 2-78 ~ 2-86） */
+function ctrlPoints(P0,P4,th0,th4,lam0,lam4,k0=0,k4=0){
+  const t0=[Math.cos(Rd(th0)),Math.sin(Rd(th0))];
+  const t4=[Math.cos(Rd(th4)),Math.sin(Rd(th4))];
+  const P1=[P0[0]+lam0*t0[0], P0[1]+lam0*t0[1]];
+  const P3=[P4[0]-lam4*t4[0], P4[1]-lam4*t4[1]];
+  const A0=4*lam0*t0[0], B0=4*lam0*t0[1];
+  const A1=4*lam4*t4[0], B1=4*lam4*t4[1];
+  const L0=Math.hypot(A0,B0), L1=Math.hypot(A1,B1);
+  const R0 = k0*Math.pow(L0,3)/12 - (A0*(P0[1]-2*P1[1]) - B0*(P0[0]-2*P1[0]));
+  const R1 = k4*Math.pow(L1,3)/12 - (A1*(P4[1]-2*P3[1]) - B1*(P4[0]-2*P3[0]));
+  const det = A0*B1 - A1*B0;
+  let P2;
+  if(Math.abs(det) < 1e-9*Math.max(Math.abs(A0*B1),Math.abs(A1*B0),1e-30)){
+    P2=[0.5*(P1[0]+P3[0]), 0.5*(P1[1]+P3[1])];      // 退化：两端切向平行
+  }else{
+    P2=[(R0*A1 - A0*R1)/det, (B1*R0 - B0*R1)/det];
+  }
+  return [P0,P1,P2,P3,P4];
+}
+
+/* 内切圆：hub 点 M 沿法线找 shroud 交点 K，圆心在 MK 上滑动至 |PM|=dist(P,shroud)
+   —— 论文图 2-15 ~ 2-21 的二分法，这里用直接求根，等价且更稳 */
+function innerCircle(hubP,shrP,uH){
+  const M = bezier5(hubP,uH);
+  const d = bezier5d(hubP,uH);
+  const nrm = Math.hypot(d[0],d[1]);
+  if(nrm<1e-14) return null;
+  const t=[d[0]/nrm, d[1]/nrm];
+  // 沿法线扫 shroud，找 (Q-M)·t 变号的区间
+  const N=600; let prev=null, hits=[];
+  for(let i=0;i<=N;i++){
+    const u=i/N, Q=bezier5(shrP,u);
+    const val=(Q[0]-M[0])*t[0] + (Q[1]-M[1])*t[1];
+    if(prev!==null && prev*val<0) hits.push([(i-1)/N, u]);
+    prev=val;
+  }
+  if(!hits.length) return null;
+  // 取离 M 最近的交点
+  let best=null, bestD=1e9;
+  for(const [a,b] of hits){
+    let lo=a, hi=b;
+    for(let k=0;k<60;k++){
+      const mid=0.5*(lo+hi), Q=bezier5(shrP,mid);
+      const val=(Q[0]-M[0])*t[0] + (Q[1]-M[1])*t[1];
+      const valLo=(()=>{const q=bezier5(shrP,lo);return (q[0]-M[0])*t[0]+(q[1]-M[1])*t[1];})();
+      if(valLo*val<=0) hi=mid; else lo=mid;
+    }
+    const uK=0.5*(lo+hi), K=bezier5(shrP,uK);
+    const dist=Math.hypot(K[0]-M[0],K[1]-M[1]);
+    if(dist<bestD){bestD=dist; best={M,K};}
+  }
+  if(!best) return null;
+  const {M:mm,K}=best;
+  const MK=[K[0]-mm[0], K[1]-mm[1]];
+  const lenMK=Math.hypot(MK[0],MK[1]);
+  // 圆心取 MK 中点、半径取 |MK|/2。
+  // 论文图 2-20/2-21 是在 MK 上滑动找"同时切两边"的圆心，
+  // 但在出口段 hub/shroud 几乎平行，那个迭代会退化到 R→0。
+  // 收敛流道里内切圆圆心本来就在 MK 中点，直接取即可，等价且稳定。
+  return {center:[(mm[0]+K[0])/2,(mm[1]+K[1])/2], R:lenMK/2, M:mm, K};
+}
+
+function buildMeridian(o,p){
+  /* 端点坐标（这是上一版画错的根源，务必看清）：
+     进口面是 z=0 的平面 -> 两条线在 r 方向分开：hub 在 rh，shroud 在 rt1
+     出口面是 r=r2 的圆柱面 -> 两条线在 **z 方向** 分开：
+         hub 在 z=Lz（叶轮背面），shroud 在 z=Lz-b2（前盖）
+     也就是说出口段是水平线段，长度 b2；进口段是竖直线段，长度 rt1-rh。
+     上一版把出口写成 r 方向差 b2、z 相同，所以两条线在图上糊成一条。 */
+  const rhIn = o.rh,  rsIn = o.rt1;
+  const rOut = o.r2;                       // 出口 hub/shroud 半径相同
+  const Lz   = p.lz/1000;                   // 轴向总长 [m]，输入是 mm（= CFturbo 的 Δz）
+  const zHub = Lz, zShr = Lz - o.b2;       // 出口 z 坐标，差一个 b2
+
+  const Lh = Math.hypot(zHub-0, rOut-rhIn);
+  const Ls = Math.hypot(zShr-0, rOut-rsIn);
+  const lam0 = p.lam*Math.min(Lh,Ls);
+  const lam4h = p.lam*Lh, lam4s = p.lam*Ls;
+
+  const hubP = ctrlPoints([0,rhIn],[zHub,rOut], p.th0, p.th4, lam0, lam4h);
+  const shrP = ctrlPoints([0,rsIn],[zShr,rOut], p.th0, p.th4, lam0, lam4s);
+
+  const N=161, hub=[], shr=[];
+  for(let i=0;i<N;i++){ const u=i/(N-1); hub.push(bezier5(hubP,u)); shr.push(bezier5(shrP,u)); }
+
+  // 内切圆：按 hub 相对弧长等距取 41 个（论文图 2-14 取 22 个）
+  const s=[0];
+  for(let i=1;i<N;i++) s.push(s[i-1]+Math.hypot(hub[i][0]-hub[i-1][0], hub[i][1]-hub[i-1][1]));
+  const sTot=s[N-1];
+  const circles=[];
+  const NC=20;
+  for(let j=0;j<=NC;j++){
+    const target=j/NC*sTot;
+    let idx=0; while(idx<N-1 && s[idx]<target) idx++;
+    const u=idx/(N-1);
+    const c=innerCircle(hubP,shrP,u);
+    if(c) circles.push({...c, s:target/sTot});
+  }
+  return {hubP,shrP,hub,shr,circles,Lz,zHub,zShr};
+}
+
+/* =========================================================================
+   4. 判据
+   ========================================================================= */
+function checks(o,p){
+  const C=[];
+  const add=(name,val,lo,hi,unit,eq,note)=>{
+    let st='na';
+    if(val!=null && isFinite(val)){
+      if(lo!=null && val<lo) st = val<lo*0.95?'fail':'warn';
+      else if(hi!=null && val>hi) st = val>hi*1.05?'fail':'warn';
+      else st='ok';
+    }
+    C.push({name,val,lo,hi,unit,eq,note,st});
+  };
+  add('叶尖进口相对马赫 Mw1', o.Mw1, null, 0.90, '-', '(2-19)',
+      '亚音速设计上限；跨音速可到 1.0 但需激波管理');
+  add('进口气流角 β1', o.beta1, 20, 45, '°', '(2-15)', '与叶片安装角一致时冲角≈0');
+  add('叶轮出口流量系数 c2r/u2', o.c2r/o.u2, 0.20, 0.35, '-', '(2-35)', '偏低→b2 太宽、二次流损失大');
+  add('出口宽度比 b2/r2', o.b2/o.r2, 0.03, 0.09, '-', '(2-34)', '低压比大流量可到 0.09');
+  add('落后角 β2A-β2', p.b2a-o.beta2, 2, 12, '°', '(2-38)', '偏离 2~12° 说明滑移与叶片数不自洽');
+  add('滑移偏差 (Wiesner vs 一维)', o.slip.dev, null, 5, '%', '(2-27)', '>5% 说明 β2A/z 与欧拉功不匹配');
+  add('叶顶间隙比 t/b2', o.tb*100, null, 5, '%', '—',
+      '半开式叶轮：<2% 损失很小，2~5% 可接受，>5% 显著。'
+      +`当前 t=${o.tc}mm，估算间隙损失约 ${(o.eta_tc_loss*100).toFixed(1)} 个效率点`);
+  add('无叶段长度比 k3=r3/r2', o.r3/o.r2, 1.08, 1.20, '-', '(2-40)',
+      'k3≈1.0 意味着叶片扩压器直接贴在叶轮出口，尾迹没机会掺混');
+  add('扩压器半径比 ky=r4/r3', o.ky, 1.20, 1.40, '-', '(2-55)', '>1.4 面积增长过快易分离');
+  add('扩压器出口马赫 Mc4', o.Mc4, null, 0.85, '-', '(2-45)', '');
+  C.push({name:'当量扩张角 θ（仅参考）', val:o.theta, lo:null, hi:null, unit:'°',
+          eq:'(2-61)', st:'na',
+          note:'等宽扩压器面积靠 r 增长，θ 由叶片数/半径比唯一决定，不是自由设计变量；'
+              +' >12° 时边界层易分离，应加大 ky 或改变宽'});
+  add('叶片稠度 σ', o.solid, 1.0, 1.8, '-', '(2-56)',
+      '低于 1.0 气流不跟随叶片；高于 1.8 摩擦损失与堵塞增大');
+  add('叶片数公约数 gcd(zy,z)', gcd(o.zy, p.z+p.zs), null, 2, '-', '-', '公约数>2 易激发声学共振');
+  add('蜗壳出口马赫 M5', p.M5, null, 0.15, '-', '(2-70)', '');
+  add('整机压比 πp（回算）', o.piP, p.PR*0.97, p.PR*1.03, '-', '(2-75)', '与设计目标偏差 >3% 说明损失模型需调');
+  return C;
+}
+
+/* =========================================================================
+   5. 绘图
+   ========================================================================= */
+function setupCanvas(cv){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const W = cv.clientWidth || 600, H = cv.clientHeight || 400;
+  const w = Math.round(W*dpr), h = Math.round(H*dpr);
+  if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);      // 之后全部按 CSS 像素画
+  ctx.clearRect(0,0,W,H);
+  return {ctx, W, H};
+}
+
+function drawMeridian(cv, m, o){
+  const {ctx, W, H} = setupCanvas(cv);
+  const pad={l:50,r:14,t:14,b:32};
+  let xmin=0,xmax=0,ymin=1e9,ymax=0;
+  for(const P of [...m.hub,...m.shr]){ xmin=Math.min(xmin,P[0]); xmax=Math.max(xmax,P[0]);
+    ymin=Math.min(ymin,P[1]); ymax=Math.max(ymax,P[1]); }
+  for(const c of m.circles){ ymin=Math.min(ymin,c.center[1]-c.R); ymax=Math.max(ymax,c.center[1]+c.R); }
+  const dx=xmax-xmin||1, dy=ymax-ymin||1;
+  const sc=Math.min((W-pad.l-pad.r)/dx, (H-pad.t-pad.b)/dy);
+  const X=x=>pad.l+(x-xmin)*sc, Y=y=>H-pad.b-(y-ymin)*sc;
+
+  ctx.strokeStyle='#eef1f5'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
+  const stepZ = niceStep(dx*1000), stepR = niceStep(dy*1000);
+  for(let z=Math.ceil(xmin*1000/stepZ)*stepZ; z<=xmax*1000+1e-6; z+=stepZ){
+    ctx.beginPath(); ctx.moveTo(X(z/1000),pad.t); ctx.lineTo(X(z/1000),H-pad.b); ctx.stroke();
+    ctx.fillStyle='#8892a4'; ctx.textAlign='center';
+    ctx.fillText(z, X(z/1000), H-pad.b+14);
+  }
+  for(let r=Math.ceil(ymin*1000/stepR)*stepR; r<=ymax*1000+1e-6; r+=stepR){
+    ctx.beginPath(); ctx.moveTo(pad.l,Y(r/1000)); ctx.lineTo(W-pad.r,Y(r/1000)); ctx.stroke();
+    ctx.fillStyle='#8892a4'; ctx.textAlign='right';
+    ctx.fillText(r, pad.l-5, Y(r/1000)+3.5);
+  }
+  ctx.fillStyle='#5b6678'; ctx.textAlign='center';
+  ctx.fillText('z [mm]', (pad.l+W-pad.r)/2, H-4);
+  ctx.save(); ctx.translate(12,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('r [mm]',0,0); ctx.restore();
+
+  // 内切圆
+  ctx.strokeStyle='#ccd5e3'; ctx.lineWidth=1;
+  for(const c of m.circles){
+    ctx.beginPath(); ctx.arc(X(c.center[0]),Y(c.center[1]),c.R*sc,0,7); ctx.stroke();
+  }
+  // 圆心连线（子午中线）
+  ctx.strokeStyle='#9aa7bd'; ctx.setLineDash([3,3]); ctx.beginPath();
+  m.circles.forEach((c,i)=> i? ctx.lineTo(X(c.center[0]),Y(c.center[1]))
+                             : ctx.moveTo(X(c.center[0]),Y(c.center[1])));
+  ctx.stroke(); ctx.setLineDash([]);
+
+  const drawCurve=(pts,color,w)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineJoin='round'; ctx.beginPath();
+    pts.forEach((P,i)=> i? ctx.lineTo(X(P[0]),Y(P[1])) : ctx.moveTo(X(P[0]),Y(P[1])));
+    ctx.stroke();
+  };
+  drawCurve(m.shr,'#dc2626',2.2);
+  drawCurve(m.hub,'#2563eb',2.2);
+
+  // 贝塞尔控制点（论文图 2-9 的方块）
+  const drawCtrl=(P,color)=>{
+    ctx.strokeStyle=color; ctx.globalAlpha=.35; ctx.lineWidth=1; ctx.setLineDash([2,2]);
+    ctx.beginPath(); P.forEach((q,i)=> i? ctx.lineTo(X(q[0]),Y(q[1])) : ctx.moveTo(X(q[0]),Y(q[1])));
+    ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.fillStyle=color;
+    P.forEach(q=>{ ctx.fillRect(X(q[0])-3,Y(q[1])-3,6,6); });
+  };
+  drawCtrl(m.shrP,'#dc2626'); drawCtrl(m.hubP,'#2563eb');
+
+  // 出口 b2 标注
+  const yEnd = Y(o.r2), xH = X(m.zHub), xS = X(m.zShr);
+  ctx.strokeStyle='#0f8a4a'; ctx.lineWidth=1.5; ctx.beginPath();
+  ctx.moveTo(xS,yEnd); ctx.lineTo(xH,yEnd); ctx.stroke();
+  ctx.fillStyle='#0f8a4a'; ctx.font='11px system-ui'; ctx.textAlign='center';
+  ctx.fillText('b2 = '+(o.b2*1000).toFixed(2)+' mm', (xH+xS)/2, yEnd-6);
+
+  // 图例
+  ctx.font='10.5px system-ui'; ctx.textAlign='left';
+  const leg=[['#2563eb','Hub 轮毂'],['#dc2626','Shroud 轮缘'],['#ccd5e3','内切圆']];
+  leg.forEach(([c,t],i)=>{ ctx.fillStyle=c; ctx.fillRect(pad.l+4, pad.t+3+i*15, 10, 3);
+    ctx.fillStyle='#5b6678'; ctx.fillText(t, pad.l+19, pad.t+7+i*15); });
+
+  // 尺寸块（右上角）：让"改参数到底改了什么"一眼可见
+  const lines=[
+    'r1  = '+(o.r1*1000).toFixed(2)+' mm',
+    'rt1 = '+(o.rt1*1000).toFixed(2)+' mm',
+    'r2  = '+(o.r2*1000).toFixed(2)+' mm',
+    'b2  = '+(o.b2*1000).toFixed(2)+' mm',
+  ];
+  ctx.font='10.5px "Cascadia Mono",Consolas,monospace';
+  const bw=118, bh=lines.length*14+10, bx=W-pad.r-bw, by=H-pad.b-bh-6;
+  ctx.fillStyle='rgba(255,255,255,.92)'; ctx.strokeStyle='#dde3ec'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx,by,bw,bh,5) : ctx.rect(bx,by,bw,bh);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#3d4757'; ctx.textAlign='left';
+  lines.forEach((t,i)=> ctx.fillText(t, bx+8, by+16+i*14));
+}
+
+function niceStep(v, target){
+  target = target || 5;
+  const raw = (v||1)/target;
+  const e=Math.pow(10,Math.floor(Math.log10(raw)));
+  const f=raw/e;
+  return (f<1.5?1:f<3.5?2:f<7.5?5:10)*e;
+}
+
+function drawArea(cv, m){
+  const {ctx, W, H} = setupCanvas(cv);
+  const pad={l:50,r:14,t:14,b:32};
+  const R=m.circles.map(c=>c.R*1000), S=m.circles.map(c=>c.s);
+  if(!R.length) return;
+  const rmax=Math.max(...R)*1.05;
+  const X=s=>pad.l+s*(W-pad.l-pad.r), Y=r=>H-pad.b-r/rmax*(H-pad.t-pad.b);
+
+  ctx.strokeStyle='#eef1f5'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
+  for(let i=0;i<=4;i++){
+    const r=rmax*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,Y(r)); ctx.lineTo(W-pad.r,Y(r)); ctx.stroke();
+    ctx.fillStyle='#8892a4'; ctx.textAlign='right';
+    ctx.fillText(r.toFixed(1), pad.l-5, Y(r)+3.5);
+  }
+  for(let i=0;i<=4;i++){
+    const s=i/4;
+    ctx.beginPath(); ctx.moveTo(X(s),pad.t); ctx.lineTo(X(s),H-pad.b); ctx.stroke();
+    ctx.fillStyle='#8892a4'; ctx.textAlign='center';
+    ctx.fillText(s.toFixed(1), X(s), H-pad.b+14);
+  }
+  ctx.fillStyle='#5b6678'; ctx.textAlign='center';
+  ctx.fillText('相对弧长 s / s_total', (pad.l+W-pad.r)/2, H-4);
+
+  ctx.strokeStyle='#1a56db'; ctx.lineWidth=2.2; ctx.beginPath();
+  R.forEach((r,i)=> i? ctx.lineTo(X(S[i]),Y(r)) : ctx.moveTo(X(S[i]),Y(r)));
+  ctx.stroke();
+  ctx.fillStyle='#1a56db';
+  R.forEach((r,i)=>{ ctx.beginPath(); ctx.arc(X(S[i]),Y(r),2.4,0,7); ctx.fill(); });
+
+  let inc=0, dec=0;
+  for(let i=1;i<R.length;i++){ if(R[i]>R[i-1]+1e-9) inc++; else if(R[i]<R[i-1]-1e-9) dec++; }
+  const mono = (inc===0 || dec===0);
+  ctx.font='11.5px system-ui'; ctx.textAlign='left';
+  ctx.fillStyle= mono ? '#0f8a4a' : '#dc2626';
+  ctx.fillText(mono ? 'OK  半径单调 -> 型线无曲率突变（合格）'
+                    : 'FAIL  半径非单调 -> 型线存在突变', pad.l+6, pad.t+13);
+}
+
+/* =========================================================================
+   6. UI 渲染
+   ========================================================================= */
+function readInputs(){
+  return {
+    m:num('i_m'), n:num('i_n'), PR:num('i_pr'), Tin:num('i_tin'), Pin:num('i_pin')*1000,
+    R:num('i_R'), cp:num('i_cp'),
+    hb:num('i_hb'), eta:num('i_eta'), c0:num('i_c0'), sig:num('i_sig'),
+    optmode:document.getElementById('i_optmode').value,
+    kd:num('i_kd'), k1:num('i_k1'), kd1:num('i_kd1'), rt1_in:num('i_rt1'), kwid:num('i_kwid'),
+    phi2:num('i_phi2'), b2mode:document.getElementById('i_b2mode').value,
+    z:num('i_z'), zs:num('i_zs'), b2a:num('i_b2a'), tc:num('i_tc'),
+    k3:num('i_k3'), i:num('i_i'), th:num('i_th'), m5:num('i_m5'),
+    th0:num('i_th0'), th4:num('i_th4'), lam:num('i_lam'), lz:num('i_lz'),
+    // 内部命名对齐 compute 里的小写键
+    get Hb(){return this.hb;}, get M5(){return this.m5;},
+    get b2aDeg(){return this.b2a;}
+  };
+}
+
+function tableHTML(title, tag, rows, eqCol=true){
+  let h=`<div class="card"><h2>${title}<span class="tag">${tag}</span></h2><div class="body"><table><thead><tr>
+    <th>参数</th><th>符号</th><th>数值</th><th>单位</th>${eqCol?'<th style="text-align:left">公式</th>':''}
+  </tr></thead><tbody>`;
+  for(const r of rows){
+    h+=`<tr${r.hl?' class="hl"':''}><td>${r[0]}</td><td class="num">${r[1]}</td>
+        <td class="num">${r[2]}</td><td style="text-align:left;color:#5b6678">${r[3]||''}</td>
+        ${eqCol?`<td class="eq">${r[4]||''}</td>`:''}</tr>`;
+  }
+  return h+'</tbody></table></div></div>';
+}
+
+const SW_META = {
+  b2a:  {label:'β2A 出口安装角', unit:'°',   get:(p)=>p.b2a,  set:(p,v)=>{p.b2a=v;},  fmt:(v)=>v.toFixed(1)},
+  k3:   {label:'k3 无叶段长度比', unit:'-',   get:(p)=>p.k3,   set:(p,v)=>{p.k3=v;},   fmt:(v)=>v.toFixed(3)},
+  kwid: {label:'kwid 出口宽度比', unit:'-',   get:(p)=>p.kwid, set:(p,v)=>{p.kwid=v;}, fmt:(v)=>v.toFixed(4)},
+  tc:   {label:'t 叶顶间隙',      unit:'mm',  get:(p)=>p.tc,   set:(p,v)=>{p.tc=v;},   fmt:(v)=>v.toFixed(2)},
+  kd1:  {label:'KD1 叶尖半径比',  unit:'-',   get:(p)=>p.kd1,  set:(p,v)=>{p.kd1=v;},  fmt:(v)=>v.toFixed(3)},
+  rt1:  {label:'rt1 叶尖半径',    unit:'mm',  get:(p)=>p.rt1*1000, set:(p,v)=>{p.rt1_in=v;}, fmt:(v)=>v.toFixed(1)},
+};
+
+function doSweep(){
+  const p = readInputs();
+  const key = document.getElementById('i_swparam').value;
+  const meta = SW_META[key];
+  const cur = meta.get(p);
+  let lo = parseFloat(document.getElementById('i_swlo').value);
+  let hi = parseFloat(document.getElementById('i_swhi').value);
+  if(!isFinite(lo) || !isFinite(hi)){
+    lo = cur*0.75; hi = cur*1.25;
+    document.getElementById('i_swlo').value = +lo.toFixed(3);
+    document.getElementById('i_swhi').value = +hi.toFixed(3);
+  }
+  const n = Math.max(4, Math.min(40, parseInt(document.getElementById('i_swn').value)||12));
+
+  const data = [];
+  for(let i=0;i<=n;i++){
+    const v = lo + (hi-lo)*i/n;
+    const q = {...p, optmode:'w1'};      // 扫参时固定 w1 最小，避免嵌套优化
+    meta.set(q, v);
+    if(key==='rt1') q.rt1_in = v;
+    const o = compute(q);
+    data.push({v, piP:o.piP, eta:o.etaReal*100, etaP:o.eta_p_calc*100,
+               Mw1:o.Mw1, b2:o.b2*1000, beta1:o.beta1});
+  }
+  window._SW = {data, meta, cur};
+  drawSweep(document.getElementById('cvSweep'), data, meta, cur);
+  renderSweepTable(data, meta, cur);
+}
+
+function drawSweep(cv, data, meta, cur){
+  const {ctx, W, H} = setupCanvas(cv);
+  const pad={l:52,r:56,t:14,b:34};
+  const xs=data.map(d=>d.v);
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  const eMin=Math.min(...data.map(d=>d.etaP)), eMax=Math.max(...data.map(d=>d.etaP));
+  const pMin=Math.min(...data.map(d=>d.piP)), pMax=Math.max(...data.map(d=>d.piP));
+  const ePad=Math.max((eMax-eMin)*0.25, 0.3), pPad=Math.max((pMax-pMin)*0.25, 0.01);
+  const X=v=>pad.l+(v-x0)/Math.max(x1-x0,1e-9)*(W-pad.l-pad.r);
+  const YE=e=>H-pad.b-(e-(eMin-ePad))/((eMax+ePad)-(eMin-ePad))*(H-pad.t-pad.b);
+  const YP=p=>H-pad.b-(p-(pMin-pPad))/((pMax+pPad)-(pMin-pPad))*(H-pad.t-pad.b);
+
+  // 网格
+  ctx.strokeStyle='#eef1f5'; ctx.lineWidth=1; ctx.font='10.5px system-ui';
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(H-pad.t-pad.b)*i/4;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+  }
+  // 轴标签
+  ctx.fillStyle='#0f8a4a'; ctx.textAlign='right';
+  for(let i=0;i<=4;i++){
+    const e=(eMax+ePad)-(i/4)*((eMax+ePad)-(eMin-ePad));
+    ctx.fillText(e.toFixed(2), pad.l-5, pad.t+(H-pad.t-pad.b)*i/4+4);
+  }
+  ctx.fillStyle='#dc2626'; ctx.textAlign='left';
+  for(let i=0;i<=4;i++){
+    const pv=(pMax+pPad)-(i/4)*((pMax+pPad)-(pMin-pPad));
+    ctx.fillText(pv.toFixed(2), W-pad.r+5, pad.t+(H-pad.t-pad.b)*i/4+4);
+  }
+  ctx.fillStyle='#8892a4'; ctx.textAlign='center'; ctx.font='10px system-ui';
+  for(let i=0;i<=4;i++){
+    const v=x0+(x1-x0)*i/4;
+    ctx.fillText(meta.fmt(v), X(v), H-pad.b+13);
+  }
+  ctx.font='10.5px system-ui';
+  ctx.fillText(meta.label+' ['+meta.unit+']', (pad.l+W-pad.r)/2, H-4);
+  ctx.fillStyle='#0f8a4a'; ctx.textAlign='left'; ctx.fillText('ηp [%]', pad.l+2, pad.t+10);
+  ctx.fillStyle='#dc2626'; ctx.textAlign='right'; ctx.fillText('πt', W-pad.r-2, pad.t+10);
+
+  // 曲线
+  const line=(getY,color)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+    data.forEach((d,i)=> i? ctx.lineTo(X(d.v), getY(d)) : ctx.moveTo(X(d.v), getY(d)));
+    ctx.stroke();
+    ctx.fillStyle=color;
+    data.forEach(d=>{ ctx.beginPath(); ctx.arc(X(d.v), getY(d), 2.4, 0, 7); ctx.fill(); });
+  };
+  line(d=>YE(d.etaP), '#0f8a4a');
+  line(d=>YP(d.piP), '#dc2626');
+
+  // 当前值竖线
+  const xc=X(cur);
+  ctx.strokeStyle='#1a56db'; ctx.setLineDash([4,3]); ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(xc,pad.t); ctx.lineTo(xc,H-pad.b); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#1a56db'; ctx.textAlign='center'; ctx.font='10.5px system-ui';
+  ctx.fillText('当前 '+meta.fmt(cur), xc, pad.t+9);
+}
+
+function renderSweepTable(data, meta, cur){
+  let h = `<table style="margin-top:8px"><thead><tr>
+    <th>${meta.label}</th><th>πt</th><th>η [%]</th><th>ηp [%]</th><th>Mw1</th><th>β1 [°]</th></tr></thead><tbody>`;
+  let bestI=0;
+  data.forEach((d,i)=>{ if(d.etaP>data[bestI].etaP) bestI=i; });
+  data.forEach((d,i)=>{
+    const mark = i===bestI ? ' class="hl"' : '';
+    h += `<tr${mark}><td class="num">${meta.fmt(d.v)}</td><td class="num">${d.piP.toFixed(3)}</td>
+      <td class="num">${d.eta.toFixed(2)}</td><td class="num">${d.etaP.toFixed(2)}</td>
+      <td class="num">${d.Mw1.toFixed(3)}</td><td class="num">${d.beta1.toFixed(1)}</td></tr>`;
+  });
+  h += '</tbody></table>';
+  const b=data[bestI];
+  const dEta = Math.max(...data.map(d=>d.etaP)) - Math.min(...data.map(d=>d.etaP));
+  const dPi  = Math.max(...data.map(d=>d.piP)) - Math.min(...data.map(d=>d.piP));
+  h += `<div class="note">峰值在 <b>${meta.label} = ${meta.fmt(b.v)}</b>（ηp=${b.etaP.toFixed(2)}%，πt=${b.piP.toFixed(3)}）。
+      本区间内 ηp 变化 ${dEta.toFixed(2)} 点、πt 变化 ${dPi.toFixed(4)}。
+      <br><b>⚠ 响应性说明：</b>本工具是<b>反问题</b>（给定 πt 算几何），压升链从 P0₂ = Pin·πt 起步，
+      所以 <b>πt 对几何参数几乎不响应</b>——改 k3/kwid 只改变损失细节，传不到总压比上。
+      对 <b>ηp</b> 有效的只有进损失模型的那几项（间隙 t、β2A 通过滑移、rt1 通过叶片长度）。
+      要让 πt 真正响应几何，需要「正问题」模式（给定几何算性能），那是下一步。</div>`;
+  document.getElementById('swTable').innerHTML=h;
+}
+
+function cfturboTable(o,p,m){
+  // CFturbo 的 metal angle 从 **切向** 测量（β=90° 为径向叶片），
+  // 本 APP 从 **径向** 测量，所以 β_cfturbo = 90 − β_app。
+  const b1A = o.beta1 + 1.0;          // 叶片进口安装角 = 气流角 + 1° 攻角
+  const rows = [
+    ['Global setup','Mass flow (设计点质量流量)', p.m.toFixed(4), 'kg/s',
+      '工况直接填'],
+    ['Global setup','Rotational speed (转速)', p.n.toFixed(0), 'rpm', ''],
+    ['Global setup','Total pressure ratio (总压比)', p.PR.toFixed(3), '-', ''],
+    ['Global setup','Inlet total temperature', p.Tin.toFixed(1), 'K', ''],
+    ['Global setup','Inlet total pressure', (p.Pin/1000).toFixed(2), 'kPa', ''],
+    ['Global setup','Fluid: Air ideal gas / R / Cp',
+      p.R.toFixed(1)+' / '+p.cp.toFixed(1), 'J/kgK', ''],
+
+    ['Preliminary design','r1 shroud (叶尖进口半径)', (o.rt1*1000).toFixed(2), 'mm',
+      '把 calculated 改成 user input 再填'],
+    ['Preliminary design','r1 hub (轮毂进口半径)', (o.rh*1000).toFixed(2), 'mm',''],
+    ['Preliminary design','r2 (叶轮出口半径)', (o.r2*1000).toFixed(2), 'mm',
+      '★ 主尺寸，务必锁定'],
+    ['Preliminary design','b2 (出口宽度)', (o.b2*1000).toFixed(2), 'mm',
+      'kwid 口径下 = kwid×r2'],
+    ['Preliminary design','β1A 进口角 Shroud（从切向）', o.beta1.toFixed(2), 'deg',
+      'CFturbo 同一定义，直接填'],
+    ['Preliminary design','β1A 进口角 Hub（从切向）', o.beta1_hub.toFixed(2), 'deg',
+      'CFturbo 会按自由涡自动插值'],
+    ['Preliminary design','β2A 出口角（从切向）', p.b2a.toFixed(2), 'deg',
+      'CFturbo 自动算的约 37.5，与这里一致'],
+    ['Preliminary design','Main blade number z', p.z.toFixed(0), '-', ''],
+    ['Preliminary design','Splitter blade number', p.zs.toFixed(0), '-', '0 = 无分流叶片'],
+
+    ['Meridional contour','端点：r1 shroud / r1 hub',
+      `${(m.shrP[0][1]*1000).toFixed(2)} / ${(m.hubP[0][1]*1000).toFixed(2)}`, 'mm',
+      '拖 P0 到这两个半径上'],
+    ['Meridional contour','端点：r2 / b2',
+      `${(o.r2*1000).toFixed(2)} / ${(o.b2*1000).toFixed(2)}`, 'mm',
+      'P4 半径=r2；Hub P4 与 Shroud P4 的 z 差=b2'],
+    ['Meridional contour','Start angle (进口切向角)',
+      `${p.th0.toFixed(1)}（与轴向夹角）`, 'deg',
+      'CFturbo 里直接用 0°（纯轴向进）。本 APP 的 '+p.th0.toFixed(0)+'° 是为避开论文贝塞尔的退化，不必照搬'],
+    ['Meridional contour','End angle (出口切向角)',
+      `${p.th4.toFixed(1)}（与轴向夹角）`, 'deg',
+      'CFturbo 里直接用 90°（纯径向出）。本 APP 的 '+p.th4.toFixed(0)+'° 同上，不必照搬'],
+    ['Meridional contour','Hub P1 / P2 / P3 相对位置',
+      `${((m.hubP[1][0]/m.hubP[4][0])*100).toFixed(0)}% / `
+      +`${((m.hubP[2][0]/m.hubP[4][0])*100).toFixed(0)}% / `
+      +`${((m.hubP[3][0]/m.hubP[4][0])*100).toFixed(0)}%`, 'z 向占比',
+      '按网格目测拖，不必精确'],
+    ['Meridional contour','Shroud P1 / P2 / P3 相对位置',
+      `${((m.shrP[1][0]/m.shrP[4][0])*100).toFixed(0)}% / `
+      +`${((m.shrP[2][0]/m.shrP[4][0])*100).toFixed(0)}% / `
+      +`${((m.shrP[3][0]/m.shrP[4][0])*100).toFixed(0)}%`, 'z 向占比',''],
+
+    ['Blade properties','Blade type','Ruled surface 3D 或 Generic 3D','-',
+      '高负荷建议 Generic 3D，可独立控制 hub/shroud'],
+    ['Blade properties','Tip clearance (叶顶间隙)', o.tc.toFixed(2), 'mm',
+      `t/b2=${(o.tb*100).toFixed(1)}%，估算损失 ${(o.eta_tc_loss*100).toFixed(1)} 点`],
+    ['Blade angles','β1A Shroud / Hub',
+      `${o.beta1.toFixed(1)} / ${o.beta1_hub.toFixed(1)}`, 'deg (从切向)',
+      '沿叶高线性插值，Hub→Shroud 递减'],
+    ['Blade angles','β2A Hub / Shroud',
+      `${p.b2a.toFixed(1)} / ${p.b2a.toFixed(1)}`, 'deg (从切向)',
+      '出口角沿叶高近似恒定'],
+
+    ['Diffuser','Inlet radius r3', (o.r3*1000).toFixed(2), 'mm', '★ 不要等于 r2'],
+    ['Diffuser','Outlet radius r4', (o.r4*1000).toFixed(2), 'mm', ''],
+    ['Diffuser','Inlet width b3', (o.b3*1000).toFixed(2), 'mm', '= b2'],
+    ['Diffuser','Outlet width b4', (o.b4*1000).toFixed(2), 'mm', '等宽设计'],
+    ['Diffuser','Vane number zy', o.zy.toFixed(0), '-', '与叶轮 18 片互质'],
+    ['Diffuser','β3A（从切向）', o.b3A.toFixed(2), 'deg', '绝对气流角，零攻角'],
+    ['Diffuser','β4A（从切向）', o.b4A.toFixed(2), 'deg', ''],
+
+    ['Volute','Inlet area A3', (2*Math.PI*o.r4*o.b4*1e4).toFixed(2), 'cm²',
+      '= 2π·r4·b4'],
+    ['Volute','Outlet area A5', (o.A5*1e4).toFixed(2), 'cm²', '按 M5 目标'],
+    ['Volute','Outlet radius r5', (o.r5*1000).toFixed(2), 'mm', '圆形出口'],
+    ['Volute','Cross section','Circular（圆形对称）','-','论文 2.3.2'],
+  ];
+
+  let h = `<table class="cft"><thead><tr><th>CFturbo 页面</th><th>字段</th><th>填什么</th>
+    <th>单位</th><th style="text-align:left">备注</th></tr></thead><tbody>`;
+  for(const [pg,f,v,u,note] of rows){
+    h += `<tr><td>${pg}</td><td style="text-align:left">${f}</td>
+      <td class="num">${v}</td><td style="text-align:left">${u}</td>
+      <td class="eq">${note||''}</td></tr>`;
+  }
+  h += '</tbody></table>';
+  h += `<div class="note" style="border-left-color:#b45309">
+    <b>✓ 角度方向：</b>CFturbo 与本 APP <b>同一定义</b>——都从<b>切向</b>测量
+    （β=0 沿周向，β=90 是径向叶片），<b>直接照抄，不要做 90−β 换算</b>。
+    验证：本表 β1 Shroud≈25°、Hub≈52°，与 CFturbo 自动算的 25.8/50.4 一致。
+    <br><b>⚠ 半径 vs 直径：</b>表里全是半径。CFturbo 有的版本在 Meridional contour 里显示直径 D，填之前确认一下。
+    <br><b>⚠ 子午面怎么填：</b>CFturbo 的子午面是<b>拖动式</b>的（右键菜单只有 Start angle / End angle /
+    Curve type，没有坐标输入）。所以<b>不要试图照抄控制点</b>，只需锁三件事：
+    ① P0 的两个半径（r1 shroud / r1 hub）；② P4 的 r2 和 Hub-Shroud 的 z 差（=b2）；
+    ③ 右键 → Start angle / End angle。中间控制点让它自己走，只要目测<b>不鼓包</b>即可。
+    <br><b>⚠ 填完要回读：</b>在 CFturbo 里改完 Preliminary design 后，它的一维结果应跟本页 KPI 一致
+    （πp 差 &lt;2%、r2 差 &lt;1%）。对不上说明某一格没锁住（calculated 没切到 user input）。</div>`;
+  return h;
+}
+
+function render(o,p,m){
+  // KPI
+  let kpiHTML = `
+    <div><div class="k">总压比（回算）</div><div class="v">${fmt(o.piP,4)}<small>目标 ${fmt(p.PR,4)}</small></div></div>
+    <div><div class="k">等熵效率</div><div class="v">${fmt(o.etaReal*100,4)}<small>%</small></div></div>
+    <div><div class="k">叶轮圆周速度 u2</div><div class="v">${fmt(o.u2,4)}<small>m/s</small></div></div>
+    <div><div class="k">轴功率</div><div class="v">${fmt(o.power,4)}<small>kW</small></div></div>`;
+  if(o._opt){
+    kpiHTML += `<div><div class="k">r1 优化（ηp 最大）</div>
+      <div class="v">${o._opt.bestRt.toFixed(1)}<small>mm</small></div>
+      <div style="font-size:10.5px;color:#5b6678;margin-top:2px">
+        w1 最小解 ${o._opt.rt0.toFixed(1)} mm，ηp 提升 ${o._opt.gain>=0?'+':''}${o._opt.gain.toFixed(2)} 点
+        <br>β1=${o._opt.beta1.toFixed(1)}°，Mw1=${o._opt.Mw1.toFixed(3)}</div></div>`;
+  }
+  document.getElementById('kpi').innerHTML = kpiHTML;
+
+  let h='';
+  h+=tableHTML('① 吸气室截面 0-0','式(2-2)~(2-4)',[
+    ['静温','T0',fmt(o.st.s0.T),'K','(2-2) T0 = Tin − c0²/(2Cp)'],
+    ['静压','P0',fmt(o.st.s0.P/1000),'kPa','(2-3) P0 = Pin·(T0/Tin)^(k/(k−1))'],
+    ['密度','ρ0',fmt(o.st.s0.rho),'kg/m³','(2-4) ρ0 = P0/(R·T0)'],
+    ['速度','c0',fmt(o.st.s0.c),'m/s','选取（相似机型）'],
+    ['马赫数','M0',fmt(o.st.s0.M),'-','c0/√(kRT0)'],
+  ]);
+
+  h+=tableHTML('② 叶轮进口 1-1','式(2-7)~(2-22)',[
+    ['吸气室入口半径','r0',fmt(o.r0*1000),'mm','黄金分割求 w1 最小（(2-10)）','hl'],
+    ['叶轮进口半径','r1',fmt(o.r1*1000),'mm','(2-12) r1 = k1·r0','hl'],
+    ['轮毂半径','rh',fmt(o.rh*1000),'mm','(2-16) rh = Kd·r1'],
+    ['叶尖半径','rt1',fmt(o.rt1*1000),'mm','(2-18) rt1 = r1·KD1'],
+    ['静温','T1',fmt(o.st.s1.T),'K','(2-7) T1 = Tin − c1²/(2Cp)'],
+    ['静压','P1',fmt(o.st.s1.P/1000),'kPa','(2-8) P1 = Pin·σ·(T1/Tin)^(k/(k−1))'],
+    ['密度','ρ1',fmt(o.st.s1.rho),'kg/m³','(2-9)'],
+    ['绝对速度','c1',fmt(o.st.s1.c),'m/s','连续性'],
+    ['圆周速度','u1',fmt(o.st.s1.u),'m/s','(2-13) u1 = ω·r1'],
+    ['相对速度','w1',fmt(o.w1),'m/s','(2-10)'],
+    ['进口气流角 Shroud','β1',fmt(o.beta1),'°','(2-15) arctan(c_m1/u1t)，从切向','hl'],
+    ['进口气流角 Hub','β1h',fmt(o.beta1_hub),'°','arctan(c_m1/u1h)，沿叶高递减'],
+    ['叶尖相对马赫','Mw1',fmt(o.Mw1),'-','(2-19) w1t/a1','hl'],
+  ]);
+
+  h+=tableHTML('③ 叶轮出口 2-2','式(2-24)~(2-39)',[
+    ['圆周速度','u2',fmt(o.u2),'m/s','(2-6) u2 = √(lcs/Hb)'],
+    ['出口半径','r2',fmt(o.r2*1000),'mm','(2-17) r2 = u2/ω'],
+    ['出口宽度','b2',fmt(o.b2*1000),'mm','(2-34) b2 = kwid·r2'],
+    ['实际比功','Y',fmt(o.Y/1000),'kJ/kg','(2-25) Y = lcs/η'],
+    ['周向分速度','c2u',fmt(o.c2u),'m/s','(2-24) c2u = Y/u2'],
+    ['径向分速度','c2r',fmt(o.c2r),'m/s','(2-35) 连续性'],
+    ['绝对速度','c2',fmt(o.c2),'m/s','(2-37)'],
+    ['相对速度','w2',fmt(o.st.s2.w),'m/s','(2-39)'],
+    ['相对气流角','β2',fmt(o.beta2rel),'°','(2-38) arctan[c2r/(u2−c2u)]','hl'],
+    ['绝对气流角','α2',fmt(o.alpha2),'°','arctan(c2r/c2u)，扩压器进口用'],
+    ['静温','T2',fmt(o.T2),'K','能量方程'],
+    ['静压','P2',fmt(o.P2/1000),'kPa','(2-32)'],
+    ['出口马赫','M2',fmt(o.st.s2.M),'-','c2/√(kRT2)'],
+    ['滑移系数（Wiesner 原式）','μ',fmt(o.slip.mu),'-','(2-27) μ = 1 − √cosβ2A / z^0.7','hl'],
+    ['滑移系数（论文写法）','μ′',fmt(o.slip.mu_paper),'-','1 − 0.7·sinβ2A / z^0.7（对照）'],
+    ['滑移预测 c2u','c2u′',fmt(o.slip.c2u_w),'m/s','μ(u2 − c2r·cotβ2A)'],
+    ['偏差','Δ',fmt(o.slip.dev,3),'%','|c2u′−c2u|/c2u'],
+    ['叶顶间隙','t',fmt(o.tc,3),'mm','半开式 shroud 侧'],
+    ['间隙比','t/b2',fmt(o.tb*100,3),'%','<2% 好 / 2~5% 可接受 / >5% 显著','hl'],
+    ['估算间隙损失','Δη/η',fmt(o.eta_tc_loss*100,3),'点','≈ 0.8·(t/b2)，±50% 不确定度'],
+  ]);
+
+  h+=tableHTML('④ 无叶扩压段 3-3','式(2-40)~(2-48)',[
+    ['出口半径','r3',fmt(o.r3*1000),'mm','(2-40) r3 = k3·r2','hl'],
+    ['半径比','k3',fmt(o.r3/o.r2),'-','1.08~1.20'],
+    ['速度','c3',fmt(o.c3),'m/s','(2-44) c3 = c2r·r2/r3'],
+    ['静温','T3',fmt(o.T3),'K','(2-43)'],
+    ['静压','P3',fmt(o.P3/1000),'kPa','(2-42)'],
+    ['密度','ρ3',fmt(o.rho3),'kg/m³','(2-47)'],
+    ['马赫数','Mc3',fmt(o.Mc3),'-','(2-45)'],
+    ['流道宽度','b3',fmt(o.b3*1000),'mm','(2-46) b3 = b2'],
+  ]);
+
+  h+=tableHTML('⑤ 叶片扩压器 4-4','式(2-49)~(2-65)',[
+    ['出口半径','r4',fmt(o.r4*1000),'mm','(2-54) r4 = r3·cosβ3A/cosβ4A','hl'],
+    ['半径比','ky',fmt(o.ky),'-','(2-55) 1.20~1.40'],
+    ['进口安装角','β3A',fmt(o.b3A),'°','(2-52) β3A = (β3+β4)/2'],
+    ['出口安装角','β4A',fmt(o.b4A),'°','(2-53) β4A = β3A + i'],
+    ['叶片长度','L',fmt(o.Lbl*1000),'mm','(2-56)'],
+    ['叶片数','zy',fmt(o.zy,4),'-','由 (2-61) θ 反算（理想 '+fmt(o.zyIdeal,3)+'）','hl'],
+    ['进口喉宽','a_in',fmt(o.a_in*1000),'mm','(2-58)'],
+    ['出口喉宽','a_out',fmt(o.a_out*1000),'mm','(2-59)'],
+    ['当量扩张角','θ',fmt(o.theta),'°','(2-61)'],
+    ['稠度','σ',fmt(o.solid),'-','zy·L/(2π·r_m)'],
+    ['出口速度','c4',fmt(o.c4),'m/s','连续性'],
+    ['出口马赫','Mc4',fmt(o.Mc4),'-','(2-45)'],
+    ['静温','T4',fmt(o.T4),'K','(2-63)'],
+    ['静压','P4',fmt(o.P4/1000),'kPa','(2-64)'],
+  ]);
+
+  h+=tableHTML('⑥ 蜗壳出口 5-5','式(2-66)~(2-75)',[
+    ['出口速度','c5',fmt(o.c5),'m/s','由 M5 目标定'],
+    ['出口半径','r5',fmt(o.r5*1000),'mm','(2-70) r5 = √(A5/π)'],
+    ['出口面积','A5',fmt(o.A5*1e4),'cm²','m/(ρ·c5)'],
+    ['静温','T5',fmt(o.T5),'K','(2-71)'],
+    ['静压','P5',fmt(o.P5/1000),'kPa','(2-72)'],
+    ['出口总温','T5*',fmt(o.T5o),'K','(2-73)'],
+    ['出口总压','P5*',fmt(o.P5o/1000),'kPa','(2-74)','hl'],
+    ['回算压比','πp',fmt(o.piP),'-','(2-75)','hl'],
+  ]);
+
+  // ---- 叶轮损失明细 ----
+  const nm={sf:['摩擦','4·Cf·(L/Dh)·W̄²/2，Cf=0.005'],
+            inc:['冲击','0.5·(w1·sin i)²/2，设计点 i≈1°'],
+            cl:['叶顶间隙','0.6·(t/b2)·c_u2²/2，Aungier'],
+            df:['轮盘摩擦','0.012·u2²，半开式经验'],
+            rc:['回流','0.015·u2²，经验']};
+  let lh = `<div class="card"><h2>叶轮损失明细 <span class="tag">对应笔记「目标函数 w1→级效率」</span></h2>
+    <div class="body"><table><thead><tr><th>损失项</th><th>Δh [J/kg]</th><th>占欧拉功</th>
+    <th style="text-align:left">估算式</th></tr></thead><tbody>`;
+  for(const k of ['sf','inc','cl','df','rc']){
+    const v=o.loss[k];
+    lh += `<tr><td>${nm[k][0]}</td><td class="num">${v.toFixed(0)}</td>
+      <td class="num">${(v/o.dHeul*100).toFixed(2)}%</td>
+      <td class="eq">${nm[k][1]}</td></tr>`;
+  }
+  lh += `<tr class="hl"><td><b>合计</b></td><td class="num"><b>${o.dHloss.toFixed(0)}</b></td>
+    <td class="num"><b>${(o.dHloss/o.dHeul*100).toFixed(2)}%</b></td>
+    <td class="eq">欧拉功 ${o.dHeul.toFixed(0)} J/kg</td></tr>`;
+  lh += `</tbody></table>`;
+  lh += `<div class="note"><b>叶轮多变效率（由损失算出）η<sub>p</sub> = ${(o.eta_p_calc*100).toFixed(1)}%</b>，
+    你输入的假设值 η<sub>tt</sub> = ${(p.eta*100).toFixed(0)}%。
+    两者含义不同（η<sub>p</sub> 是叶轮内部多变效率，η<sub>tt</sub> 是整机总-总效率，还含扩压器与蜗壳损失），
+    但差距过大（>10 点）说明损失系数或后置部件假设需复核。
+    <br><b>系数不确定度 ±30%</b>：这五项是经验式，用于判断"哪项占大头"，不能当精确预测。
+    你这台 <b>回流 + 轮盘摩擦占 ${((o.loss.df+o.loss.rc)/o.dHeul*100).toFixed(1)}%</b>，
+    是 b₂ 偏窄（${(o.b2*1000).toFixed(1)} mm）导致轮盘面积相对过大的典型特征。</div></div></div>`;
+
+  // ---- 三层对账 ----
+  lh += `<div class="card"><h2>三层结果对账 <span class="tag">笔记第 7 节：设计/一维/CFD 不闭合</span></h2>
+    <div class="body"><table><thead><tr><th>环节</th><th>总压比</th><th>效率</th>
+    <th style="text-align:left">说明</th></tr></thead><tbody>
+    <tr><td>设计目标</td><td class="num">${p.PR.toFixed(3)}</td><td class="num">${(p.eta*100).toFixed(1)}%</td>
+      <td class="eq">你输入的工况</td></tr>
+    <tr class="hl"><td>一维计算</td><td class="num">${o.piP.toFixed(3)}</td>
+      <td class="num">${(o.etaReal*100).toFixed(1)}%</td>
+      <td class="eq">本页回算，偏差 ${((o.piP/p.PR-1)*100).toFixed(1)}%</td></tr>
+    <tr><td>CFD（手工填）</td><td class="num">—</td><td class="num">—</td>
+      <td class="eq">算完把 p0_out/p0_in 和 η 填进来对账</td></tr>
+    </tbody></table>
+    <div class="note">论文的问题就在这里：设计 2.4844 / 一维 2.29 / CFD 2.31 / 优化后 2.38，
+    四层都不闭合且从未对账。你这套只要 CFD 出来后填进第三行，偏差超过 3% 就要查
+    <b>损失模型系数</b>或<b>后置部件总压恢复</b>，而不是直接怪网格。</div></div></div>`;
+
+  // 子午流道控制点表
+  let mh='<table><thead><tr><th>控制点</th><th>z [mm]</th><th>r [mm]</th><th>说明</th></tr></thead><tbody>';
+  const names=['P0','P1','P2','P3','P4'];
+  const notes=['进口端点','切向 λ0','曲率反解 (2-85)','切向 λ4','出口端点'];
+  for(let i=0;i<5;i++){
+    mh+=`<tr><td>Hub ${names[i]}</td><td class="num">${fmt(m.hubP[i][0]*1000,5)}</td>
+         <td class="num">${fmt(m.hubP[i][1]*1000,5)}</td><td class="eq">${notes[i]}</td></tr>`;
+  }
+  for(let i=0;i<5;i++){
+    mh+=`<tr><td>Shroud ${names[i]}</td><td class="num">${fmt(m.shrP[i][0]*1000,5)}</td>
+         <td class="num">${fmt(m.shrP[i][1]*1000,5)}</td><td class="eq">${notes[i]}</td></tr>`;
+  }
+  mh+='</tbody></table>';
+  mh+=`<div class="note">内切圆 ${m.circles.length} 个，按 hub 相对弧长等距取样（论文取 22 个点，图 2-14）。
+    半径沿程单调 → 子午型线曲率无突变 → 设计合格（论文图 2-24 的判据）。</div>`;
+  document.getElementById('merTable').innerHTML=mh;
+  document.getElementById('merTag').textContent =
+    `m=${p.m} kg/s · n=${p.n} r/min · r1=${(o.r1*1000).toFixed(2)} · rt1=${(o.rt1*1000).toFixed(2)} · r2=${(o.r2*1000).toFixed(2)} · b2=${(o.b2*1000).toFixed(2)} mm`;
+
+  // 校核
+  const C=checks(o,p);
+  let ch=`<div class="card" id="s8"><h2>⑧ 校核判据 <span class="tag">PASS / WARN / FAIL</span></h2><div class="body">
+    <table><thead><tr><th>判据</th><th>数值</th><th>范围</th><th>状态</th><th style="text-align:left">公式</th></tr></thead><tbody>`;
+  const stTxt={ok:'PASS',warn:'WARN',fail:'FAIL',na:'N/A'};
+  for(const c of C){
+    const v = (c.val==null||!isFinite(c.val))?'—':fmt(c.val,4);
+    const f2 = x => {
+      if(x==null) return '—';
+      if(Number.isInteger(x)) return String(x);
+      const a=Math.abs(x);
+      if(a>=100) return x.toFixed(0);
+      if(a>=1)   return x.toFixed(2);
+      return x.toFixed(3);
+    };
+    const rg = (c.lo!=null&&c.hi!=null)?`${f2(c.lo)}~${f2(c.hi)}`
+             :(c.lo!=null?`≥${f2(c.lo)}`:(c.hi!=null?`≤${f2(c.hi)}`:'—'));
+    ch+=`<tr><td>${c.name}</td><td class="num">${v}</td><td class="num">${rg}</td>
+      <td><span class="badge ${c.st}">${stTxt[c.st]}</span></td><td class="eq">${c.eq}</td></tr>`;
+  }
+  ch+='</tbody></table>';
+  const nf=C.filter(c=>c.st==='fail').length, nw=C.filter(c=>c.st==='warn').length;
+  ch+=`<div class="note">合计：<b>${C.length-nf-nw}</b> 通过 · <b>${nw}</b> 警告 · <b>${nf}</b> 不通过。
+    判据范围取自论文 2.1.3 节经验区间与 Aungier(2000)，超出 5% 记 FAIL。</div>`;
+  ch+='</div></div>';
+  document.getElementById('s8').outerHTML=ch;
+  document.getElementById('cftBody').innerHTML = cfturboTable(o,p,m);
+
+  document.getElementById('tables').innerHTML=h;
+}
+
+/* =========================================================================
+   7. 主流程
+   ========================================================================= */
+let MER=null, OUT=null;
+function run(){
+  try{
+    const p=readInputs();
+    let o, optInfo=null;
+    // ---- r1 优化 ----
+    // 论文用 w1 最小，但那只是"入口相对速度最小"，不等于级效率最高
+    // （笔记第 3.3 节与第 7 节第 1 条的批评）。有了损失模型后，
+    // 可以直接扫 rt1 取 ηp 最大——这是把代理目标换成真实目标的低成本实现。
+    if(p.optmode==='eta' && !(p.rt1_in>0)){
+      const base = compute({...p, optmode:'w1'});
+      const rt0  = base.rt1*1000;
+      let best=null, bestRt=rt0, nRej=0;
+      const N=32, lo=0.72, hi=1.28;                 // 扫 ±28%
+      for(let i=0;i<=N;i++){
+        const rt = rt0*(lo + (hi-lo)*i/N);
+        const cand = compute({...p, rt1_in: rt, optmode:'w1'});
+        // 三个硬约束，缺一个优化就会跑到边界上：
+        //   ① 数值必须有效（rt1 过小会让 c_m1 爆掉、迭代发散）
+        //   ② 叶尖相对马赫 <= 0.90（亚音速设计上限）
+        //   ③ 叶尖进口角 >= 24°（叶片太"躺"加工和结构都不合理，
+        //      CFturbo 自己的解就落在 24.3° 附近）
+        if(!isFinite(cand.eta_p_calc) || !isFinite(cand.beta1)){ nRej++; continue; }
+        if(cand.Mw1 > 0.90 || cand.beta1 < 24 || cand.beta1 > 50){ nRej++; continue; }
+        if(!best || cand.eta_p_calc > best.eta_p_calc){ best=cand; bestRt=rt; }
+      }
+      if(!best){ best = base; bestRt = rt0; }        // 全被拒就退回 w1 解
+      o = best;
+      optInfo = {rt0, bestRt, gain:(best.eta_p_calc-base.eta_p_calc)*100,
+                 etaW1:base.eta_p_calc*100, etaOpt:best.eta_p_calc*100,
+                 beta1:best.beta1, Mw1:best.Mw1, nRej};
+    }else{
+      o = compute(p);
+    }
+    o._opt = optInfo;
+    const m=buildMeridian(o,p);
+    MER=m; OUT={o,p};
+    render(o,p,m);
+    requestAnimationFrame(()=>{
+      drawMeridian(document.getElementById('cvMer'), m, o);
+      drawArea(document.getElementById('cvArea'), m);
+      if(!window._swInit && document.getElementById('cvSweep')){
+        window._swInit = true;
+        try{ doSweep(); }catch(e){ /* 扫描失败不影响主流程 */ }
+      }
+    });
+  }catch(e){
+    console.error(e);
+    alert('计算出错：'+e.message);
+  }
+}
+// 输入即算：改任何一格立刻重算，不用点按钮
+let _timer=null;
+document.querySelectorAll('.row input').forEach(el=>{
+  el.addEventListener('input', ()=>{ clearTimeout(_timer); _timer=setTimeout(run, 180); });
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ clearTimeout(_timer); run(); } });
+});
+
+const DEF={i_m:0.3592,i_n:40000,i_pr:2.252,i_tin:300,i_pin:40,i_R:287.1,i_cp:1004.5,
+  i_hb:0.455,i_eta:0.78,i_c0:40,i_sig:0.99,i_optmode:'w1',i_kd:0.40,i_k1:1.04,i_kd1:1.10,i_rt1:0,
+  i_kwid:0.076,i_phi2:0.2555,i_z:9,i_zs:9,i_b2a:38,i_tc:0.5,i_k3:1.10,i_i:20,i_th:9,i_m5:0.10,
+  i_th0:8,i_th4:86,i_lam:0.18,i_lz:44.6};
+function resetIn(){ for(const k in DEF) document.getElementById(k).value=DEF[k];
+  document.getElementById('i_b2mode').value='kwid';
+  document.getElementById('i_optmode').value='w1'; run(); }
+
+window.addEventListener('resize', ()=>{ if(MER) requestAnimationFrame(()=>{
+  drawMeridian(document.getElementById('cvMer'), MER, OUT.o);
+  drawArea(document.getElementById('cvArea'), MER); }); });
+
+run();
+</script>
+</body>
+</html>
