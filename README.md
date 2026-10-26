@@ -5,14 +5,21 @@
 
 ## 版本
 
-`web/` 下有两个 HTML，是同一个 APP 的前后两版，可直接 diff 对比：
+`web/app.html` 始终指向**最新版**；历史版本在 `web/versions/` 下留只读快照，不覆盖、可回退。
+详细变更见 **[CHANGELOG.md](CHANGELOG.md)**。
 
-| 文件 | 内容 |
-|---|---|
-| **`web/app.html`** | 当前版。在上一版基础上加了：叶轮损失模型（5 项，η 由损失算出）、三层对账（设计/一维/CFD） |
-| `web/app_v1.html` | 上一版。截面计算、子午流道、判据、CFturbo 清单都在，但没有损失模型和对账表 |
+| 文件 | 内容 | 行数 |
+|---|---|---|
+| **`web/app.html`** | 最新版（= v3） | 1332 |
+| `web/versions/v1.html` | 首个版本：截面计算 / 子午流道 / 判据 / CFturbo 清单 | 1074 |
+| `web/versions/v2.html` | + 叶轮损失模型（5 项）+ 三层对账 | 1147 |
+| `web/versions/v3.html` | + r1 优化目标可选（ηp 最大）+ 单因素敏感性 | 1332 |
 
-其余差异（两版都有）：b2 两种口径（kwid / φ2）、叶顶间隙 t/b2 估算、实时重算、尺寸标注。
+任意两版可直接 diff，例如：
+
+```bash
+git diff --no-index web/versions/v2.html web/versions/v3.html
+```
 
 ---
 
@@ -160,8 +167,10 @@ z=18、β2A=38° 时两者给 0.943 vs 0.882，差 7%，直接决定 c2u 是否�
 ```
 .
 ├── README.md
+├── CHANGELOG.md          版本变更记录
 ├── web/
-│   ├── app.html          单文件 Web APP（无依赖）
+│   ├── app.html          最新版（单文件 Web APP，无依赖）
+│   ├── versions/         历史版本快照 v1/v2/v3
 │   └── preview.png       界面预览
 └── design_1d/
     ├── gas.py            理想气体物性
